@@ -1,0 +1,18 @@
+{
+  "name": "nexusblock-ai-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Claude-powered natural-language → diagram-as-code (DSL) server for nexusblock.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
