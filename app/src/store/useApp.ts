@@ -12,10 +12,19 @@ export type Profile = {
   useCase: string
   teamName?: string
   invitedEmails?: string[]
+  inviteLinkEnabled?: boolean
   preferredTone?: 'light' | 'obsidian'
   mcpClient?: string
   importedDiagramNames?: string[]
   stylePreference?: 'technical' | 'product' | 'minimal'
+  plan?: 'free' | 'pro'
+  gitRepoUrl?: string
+  apiTokens?: { id: string; name: string; token: string; createdAt: number }[]
+  customIcons?: { id: string; name: string; dataUrl: string; createdAt: number }[]
+  teamIconUrl?: string | null
+  teamLogoUrl?: string | null
+  defaultLinkAccess?: 'restricted' | 'view' | 'edit'
+  allowedInviteDomains?: string[]
 }
 
 export type FileMeta = {
@@ -63,6 +72,7 @@ type AppState = {
 
   completeOnboarding: (profile: Profile, workspaceName: string) => void
   updateProfile: (profile: Partial<Profile>) => void
+  setWorkspaceName: (name: string) => void
   /** Replace the local workspace with a cloud copy (on login / device switch). */
   hydrateWorkspace: (data: WorkspaceIndex, ownerUid: string) => void
   /** Start a clean workspace for a different user on this browser. */
@@ -102,6 +112,15 @@ export const useApp = create<AppState>()(
 
       updateProfile: (profile) =>
         set((s) => ({ profile: s.profile ? { ...s.profile, ...profile } : null })),
+
+      setWorkspaceName: (name) =>
+        set((s) => {
+          const workspaceName = name.trim() || s.workspaceName
+          return {
+            workspaceName,
+            profile: s.profile ? { ...s.profile, teamName: workspaceName } : s.profile,
+          }
+        }),
 
       hydrateWorkspace: (data, ownerUid) =>
         set({

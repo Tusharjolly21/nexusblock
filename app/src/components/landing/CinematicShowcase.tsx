@@ -59,9 +59,9 @@ function Chapters({ p }: { p: MotionValue<number> }) {
       {SCENES.map((s, i) => {
         const [a, b] = R(i)
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const opacity = useTransform(p, [a - 0.03, a + 0.04, b - 0.04, b + 0.03], [0, 1, 1, 0])
+        const opacity = useTransform(p, [cl(a - 0.03), cl(a + 0.04), cl(b - 0.04), cl(b + 0.03)], [0, 1, 1, 0])
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const y = useTransform(p, [a - 0.03, a + 0.04], [16, 0])
+        const y = useTransform(p, [cl(a - 0.03), cl(a + 0.04)], [16, 0])
         return (
           <motion.div key={s.name} style={{ opacity, y }} className="absolute inset-x-0">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-grey-3">
@@ -91,17 +91,40 @@ function Dots({ p }: { p: MotionValue<number> }) {
   )
 }
 
+const cl = (n: number) => Math.min(1, Math.max(0, n))
+
+/** Merge contiguous active scene indices into single [start,end] intervals so
+ * the keyframe input stays strictly increasing (framer requires monotonic). */
+function mergeActive(active: number[]): [number, number][] {
+  const out: [number, number][] = []
+  for (const i of [...active].sort((a, b) => a - b)) {
+    const [s, e] = R(i)
+    const last = out[out.length - 1]
+    if (last && Math.abs(last[1] - s) < 1e-6) last[1] = e
+    else out.push([s, e])
+  }
+  return out
+}
+
 function Tab({ p, label, active }: { p: MotionValue<number>; label: string; active: number[] }) {
-  const on = useTransform(
-    p,
-    active.flatMap((i) => [R(i)[0] - 0.02, R(i)[0] + 0.03, R(i)[1] - 0.03, R(i)[1] + 0.02]),
-    active.flatMap(() => [0, 1, 1, 0]),
-  )
-  const color = useTransform(on, [0, 1], ['var(--color-grey-4)', 'var(--color-paper)'])
+  const input: number[] = []
+  const output: number[] = []
+  for (const [s, e] of mergeActive(active)) {
+    input.push(cl(s - 0.02), cl(s + 0.03), cl(e - 0.03), cl(e + 0.02))
+    output.push(0, 1, 1, 0)
+  }
+  const on = useTransform(p, input, output)
+  // Overlay an ink pill with paper text and fade it in — avoids interpolating
+  // CSS-variable colors (which framer-motion can't parse).
   return (
-    <span className="relative rounded-md px-2.5 py-1 text-[11px] font-medium">
-      <motion.span style={{ opacity: on }} className="absolute inset-0 rounded-md bg-ink" />
-      <motion.span style={{ color }} className="relative">{label}</motion.span>
+    <span className="relative inline-block rounded-md px-2.5 py-1 text-[11px] font-medium text-grey-4">
+      <span className="relative">{label}</span>
+      <motion.span
+        style={{ opacity: on }}
+        className="absolute inset-0 grid place-items-center rounded-md bg-ink text-[11px] font-medium text-paper"
+      >
+        {label}
+      </motion.span>
     </span>
   )
 }
