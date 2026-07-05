@@ -127,16 +127,16 @@ export function Dashboard() {
   if (!folderExists) return <Navigate to="/dashboard/all" replace />
 
   return (
-    <div className="grid h-full min-h-screen grid-cols-[320px_1fr] overflow-hidden bg-paper text-ink">
-      <aside className="flex min-h-0 flex-col border-r border-line bg-surface/75 px-5 py-6 backdrop-blur-xl">
+    <div className="grid h-full min-h-screen grid-cols-[264px_1fr] overflow-hidden bg-paper text-ink">
+      <aside className="flex min-h-0 flex-col border-r border-line bg-surface/80 px-4 py-4 backdrop-blur-xl">
         <div className="relative">
           <button
             onClick={() => setTeamMenuOpen((v) => !v)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-line bg-paper px-3 py-3 text-left shadow-[0_18px_42px_-32px_rgba(0,0,0,.55)] transition-colors hover:border-ink"
+            className="flex w-full items-center gap-2.5 rounded-2xl border border-line bg-paper px-3 py-2.5 text-left shadow-[0_16px_36px_-30px_rgba(0,0,0,.55)] transition-colors hover:border-ink"
             aria-expanded={teamMenuOpen}
           >
             <BrandMark />
-            <span className="min-w-0 flex-1 truncate font-display text-lg font-semibold">{workspace}</span>
+            <span className="min-w-0 flex-1 truncate font-display text-base font-semibold">{workspace}</span>
             <Icon icon={teamMenuOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="text-grey-3" />
           </button>
           {teamMenuOpen && (
@@ -153,14 +153,14 @@ export function Dashboard() {
           )}
         </div>
 
-        <nav className="mt-9 space-y-1">
+        <nav className="mt-6 space-y-1">
           <SideItem active={activeFolder === 'all' && tab === 'all'} icon="lucide:layout-grid" label="All files" hint="A" onClick={() => { setTab('all'); openFolder('all') }} />
           <SideItem icon="lucide:clock-3" label="Recents" hint="R" active={tab === 'recents'} onClick={() => { setTab('recents'); openFolder('all') }} />
           <SideItem icon="lucide:user-round" label="Created by me" hint="M" active={tab === 'mine'} onClick={() => setTab('mine')} />
           <SideItem icon="lucide:inbox" label="Unsorted" hint="U" active={tab === 'unsorted'} onClick={() => setTab('unsorted')} />
         </nav>
 
-        <div className="mt-8">
+        <div className="mt-6">
           <div className="mb-2 flex items-center justify-between px-2 font-mono text-[11px] uppercase tracking-[0.22em] text-grey-3">
             Team folders
             <button
@@ -183,12 +183,12 @@ export function Dashboard() {
                 onDelete={(id) => { deleteFolder(id); openFolder('all') }}
               />
             ))}
-            {folders.length === 0 && <div className="rounded-2xl border border-dashed border-line px-4 py-5 text-sm text-grey-3">No folders yet.</div>}
+            {folders.length === 0 && <div className="rounded-2xl border border-dashed border-line px-3 py-4 text-xs text-grey-3">No folders yet.</div>}
           </div>
         </div>
 
-        <div className="mt-auto space-y-4">
-          <div className="rounded-3xl border border-line bg-paper p-4">
+        <div className="mt-auto space-y-3 pt-5">
+          <div className="rounded-2xl border border-line bg-paper p-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold">Free workspace</div>
               <span className="rounded-full bg-grey-1 px-2 py-1 text-[11px] font-bold text-grey-4">{files.length}/3</span>
@@ -196,8 +196,8 @@ export function Dashboard() {
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-grey-1">
               <div className="h-full rounded-full bg-ink" style={{ width: `${Math.min(100, (files.length / 3) * 100)}%` }} />
             </div>
-            <p className="mt-3 text-xs leading-relaxed text-grey-3">Upgrade for private files, unlimited diagrams, version review, and full team history.</p>
-            <button className="mt-4 w-full rounded-2xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper">Upgrade</button>
+            <p className="mt-2 text-xs leading-relaxed text-grey-3">Private files, versions, and team history.</p>
+            <button className="mt-3 w-full rounded-xl bg-ink px-3 py-2 text-sm font-semibold text-paper">Upgrade</button>
           </div>
 
           <div className="space-y-1">
@@ -210,28 +210,28 @@ export function Dashboard() {
             <FeatureLink icon="lucide:terminal-square" label="MCP" />
           </div>
 
-          <button onClick={() => create('blank')} className="flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-paper">
+          <button onClick={() => create('blank')} className="flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper">
             New file <Icon icon="lucide:chevron-down" width={16} />
           </button>
         </div>
       </aside>
 
       <main className="min-w-0 overflow-y-auto">
-        <header className="sticky top-0 z-20 border-b border-line bg-paper/82 px-8 py-5 backdrop-blur-xl">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-20 border-b border-line bg-paper/86 px-6 py-3 backdrop-blur-xl">
+          <div className="flex items-center gap-3">
             <div className="flex rounded-full border border-line bg-surface p-1">
               {(['all', 'recents', 'mine', 'unsorted'] as ViewTab[]).map((item) => (
                 <button
                   key={item}
                   onClick={() => setTab(item)}
-                  className={'rounded-full px-4 py-2 text-sm font-semibold transition-colors ' + (tab === item ? 'bg-ink text-paper' : 'text-grey-3 hover:text-ink')}
+                  className={'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ' + (tab === item ? 'bg-ink text-paper' : 'text-grey-3 hover:text-ink')}
                 >
                   {tabLabel(item)}
                 </button>
               ))}
             </div>
 
-            <div className="ml-auto flex min-w-[280px] items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2 focus-within:border-ink">
+            <div className="ml-auto flex w-[min(360px,34vw)] items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2 focus-within:border-ink">
               <Icon icon="lucide:search" width={17} className="text-grey-3" />
               <input
                 value={query}
@@ -244,7 +244,7 @@ export function Dashboard() {
 
             <button
               onClick={() => copy('Invite link', inviteUrl)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper"
+              className="inline-flex items-center gap-2 rounded-2xl bg-ink px-3.5 py-2 text-sm font-semibold text-paper"
             >
               <Icon icon="lucide:send" width={16} /> {copied === 'Invite link' ? 'Copied' : 'Invite'}
             </button>
@@ -263,19 +263,19 @@ export function Dashboard() {
           </div>
         </header>
 
-        <section className="px-8 py-8">
-          <div className="flex items-end justify-between gap-8">
+        <section className="px-6 py-5">
+          <div className="flex items-start justify-between gap-6">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-grey-4">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-grey-4">
                 <Icon icon="lucide:activity" width={14} /> {greeting()}, {profile?.name || 'there'}
               </div>
-              <h1 className="font-display text-4xl font-semibold tracking-tight">Build the architecture workspace.</h1>
-              <p className="mt-2 max-w-2xl text-grey-3">
+              <h1 className="font-display text-3xl font-semibold tracking-tight">Build the architecture workspace.</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-grey-3">
                 Create files, import diagrams, connect coding tools, and keep docs plus canvas history together in {workspace}.
               </p>
             </div>
-            <div className="hidden items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 lg:flex">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-500/12 text-emerald-600">
+            <div className="hidden items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2.5 2xl:flex">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-500/12 text-emerald-600">
                 <Icon icon="lucide:check" width={16} />
               </span>
               <div>
@@ -287,7 +287,7 @@ export function Dashboard() {
 
           <input ref={importRef} type="file" hidden multiple accept=".vsdx,.drawio,.pdf,.svg,.png,.jpg,.jpeg" onChange={(e) => handleImports(e.target.files)} />
 
-          <div className="mt-8 grid gap-4 xl:grid-cols-4">
+          <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
             <ActionCard icon="lucide:plus" title="Create blank file" body="Start with a clean canvas and doc." onClick={() => create('blank')} />
             <ActionCard icon="lucide:blocks" title="Browse catalog" body="Insert architecture, ERD, flow, and sequence starters." onClick={() => setPicking(true)} />
             <ActionCard icon="lucide:upload-cloud" title="Import diagrams" body={imported.length ? `${imported.length} file${imported.length > 1 ? 's' : ''} staged from onboarding/dashboard.` : 'Bring .drawio, .vsdx, PDF, SVG, or PNG references.'} onClick={() => importRef.current?.click()} />
@@ -300,14 +300,14 @@ export function Dashboard() {
             />
           </div>
 
-          <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_360px]">
-            <div className="rounded-3xl border border-line bg-surface">
-              <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
                 <div>
-                  <h2 className="font-display text-xl font-semibold">Files</h2>
+                  <h2 className="font-display text-lg font-semibold">Files</h2>
                   <p className="text-sm text-grey-3">{results.length ? `${results.length} item${results.length > 1 ? 's' : ''}` : 'Your list is empty'}</p>
                 </div>
-                <button onClick={() => setPicking(true)} className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:border-ink">
+                <button onClick={() => setPicking(true)} className="rounded-full border border-line px-3 py-1.5 text-sm font-semibold hover:border-ink">
                   New from template
                 </button>
               </div>
@@ -333,7 +333,7 @@ export function Dashboard() {
               )}
             </div>
 
-            <aside className="space-y-5">
+            <aside className="space-y-4">
               <Panel title="Recommended next" icon="lucide:wand-sparkles">
                 <MiniAction icon="lucide:git-branch" title="Create version review file" body="Seed a diagram with visual diff examples." onClick={() => create('system', 'Version review workspace')} />
                 <MiniAction icon="lucide:message-square" title="Try anchored comments" body="Open a file and comment on exact shapes." onClick={() => files[0] ? openFile(files[0].id) : create('system')} />

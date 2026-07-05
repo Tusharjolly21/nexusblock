@@ -1,7 +1,14 @@
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Icon } from '@iconify/react'
 import { useAuth } from '../store/useAuth'
+import { useSelfDrawDiagram, useStaggerReveal } from './landing/anime'
+import { CountUp } from './landing/CountUp'
+import { CanvasToDoc } from './landing/CanvasToDoc'
+import { FeatureGrid } from './landing/FeatureGrid'
+import { Reveal } from './landing/Reveal'
+import { LiveCursors } from './landing/LiveCursors'
 import { LandingNav, LandingFooter } from './landing/LandingChrome'
 import { LivingGrid } from './landing/LivingGrid'
 import { LogoStrip } from './landing/LogoStrip'
@@ -60,17 +67,20 @@ export function Landing() {
         <LogoStrip />
         <ProductShowcase />
 
+        <CanvasToDoc />
+
         <FeatureOperatingSystem />
 
         <CodeToCanvas />
         <DriftStrip />
         <VersionDiff />
         <TemplatesSection />
+        <FeatureGrid />
         <PricingSection />
 
         {/* Final CTA */}
         <section className="mx-auto max-w-6xl px-6 pb-28">
-          <div
+          <Reveal
             className="rounded-3xl border border-line px-8 py-24 text-center"
             style={{
               backgroundImage:
@@ -85,7 +95,7 @@ export function Landing() {
             <Link to={startHref} className="mt-8 inline-flex items-center gap-1.5 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-paper transition-transform hover:-translate-y-px">
               Open the canvas <Icon icon="lucide:arrow-right" width={15} />
             </Link>
-          </div>
+          </Reveal>
         </section>
 
         <LandingFooter />
@@ -148,7 +158,7 @@ function AppMockup() {
                 <div className="mb-2 flex items-center gap-2 font-semibold text-ink">
                   <Icon icon="lucide:shield-check" width={15} /> Production diagram
                 </div>
-                <p className="text-grey-4">24 services · 3 regions · 9 live bindings</p>
+                <p className="text-grey-4"><CountUp value={24} /> services · <CountUp value={3} /> regions · <CountUp value={9} /> live bindings</p>
               </div>
               <div className="mb-2 mt-4 font-mono text-[9px] uppercase tracking-widest text-grey-3">Layers</div>
               {[
@@ -181,8 +191,10 @@ function AppMockup() {
 }
 
 function ArchitectureDiagram() {
+  const ref = useRef<HTMLDivElement>(null)
+  useSelfDrawDiagram(ref)
   return (
-    <div className="absolute inset-0 min-w-[720px]">
+    <div ref={ref} className="absolute inset-0 min-w-[720px]">
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 720 590" aria-hidden>
         <defs>
           <style>{`
@@ -221,10 +233,10 @@ function ArchitectureDiagram() {
       <MockNode style={{ left: 504, top: 348 }} icon="logos:postgresql" label="Ledger DB" tech="Postgres" />
       <MockNode style={{ left: 360, top: 446 }} icon="logos:redis" label="Cache + queues" tech="Redis" />
 
-      <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-line bg-surface/90 px-2.5 py-1 font-mono text-[9.5px] text-grey-4 shadow-sm backdrop-blur">
-        <Icon icon="lucide:activity" width={11} /> live sync · 9 bindings healthy
+      <div className="hero-badge absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-line bg-surface/90 px-2.5 py-1 font-mono text-[9.5px] text-grey-4 shadow-sm backdrop-blur">
+        <Icon icon="lucide:activity" width={11} /> live sync · <CountUp value={9} /> bindings healthy
       </div>
-      <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-xl border border-line bg-surface/90 px-3 py-2 text-[11px] text-grey-4 shadow-sm backdrop-blur">
+      <div className="hero-badge absolute bottom-4 left-4 flex items-center gap-2 rounded-xl border border-line bg-surface/90 px-3 py-2 text-[11px] text-grey-4 shadow-sm backdrop-blur">
         <Icon icon="lucide:git-compare" width={14} className="text-ink" />
         <span><strong className="text-ink">v18</strong> adds async payment workers, preserves edge/auth/data links.</span>
       </div>
@@ -240,7 +252,7 @@ function Cluster({ style, label, tone }: { style: React.CSSProperties; label: st
     purple: 'border-violet-400/70 bg-violet-500/[0.045] text-violet-600',
   }
   return (
-    <div className={'absolute rounded-2xl border border-dashed ' + colors[tone]} style={style}>
+    <div className={'hero-cluster absolute rounded-2xl border border-dashed ' + colors[tone]} style={style}>
       <div className="absolute left-3 top-2 font-mono text-[9px] uppercase tracking-widest">{label}</div>
     </div>
   )
@@ -249,7 +261,7 @@ function Cluster({ style, label, tone }: { style: React.CSSProperties; label: st
 function MockNode({ style, icon, label, tech, compact = false }: { style: React.CSSProperties; icon: string; label: string; tech: string; compact?: boolean }) {
   return (
     <div
-      className={'absolute flex items-center rounded-xl border border-line bg-surface shadow-[0_10px_28px_-20px_rgba(0,0,0,.45)] ' + (compact ? 'gap-2 px-3 py-2' : 'gap-3 px-3.5 py-2.5')}
+      className={'hero-node absolute flex items-center rounded-xl border border-line bg-surface shadow-[0_10px_28px_-20px_rgba(0,0,0,.45)] ' + (compact ? 'gap-2 px-3 py-2' : 'gap-3 px-3.5 py-2.5')}
       style={style}
     >
       <span className={(compact ? 'h-8 w-8' : 'h-10 w-10') + ' grid shrink-0 place-items-center rounded-lg bg-grey-1'}>
@@ -262,9 +274,11 @@ function MockNode({ style, icon, label, tech, compact = false }: { style: React.
 }
 
 function FeatureOperatingSystem() {
+  const cardsRef = useRef<HTMLDivElement>(null)
+  useStaggerReveal(cardsRef, '.feat-card')
   return (
     <section id="features" className="mx-auto max-w-6xl px-6 py-24">
-      <div className="mb-12 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+      <Reveal className="mb-12 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
         <div>
           <div className="mb-4 flex items-center gap-2.5 font-mono text-xs uppercase tracking-widest text-grey-3">
             <span className="h-px w-6 bg-grey-3" /> Why it's different
@@ -277,7 +291,7 @@ function FeatureOperatingSystem() {
           nexusblock is not just another drawing surface. It gives teams a workspace where diagrams, code, reviews,
           comments, icons, and drift checks all describe the same architecture.
         </p>
-      </div>
+      </Reveal>
 
       <motion.div
         initial={{ opacity: 0, y: 22 }}
@@ -296,13 +310,13 @@ function FeatureOperatingSystem() {
               <div className="font-mono text-[10px] uppercase tracking-widest text-grey-3">canvas + code + review</div>
             </div>
           </div>
-          <div className="hidden items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 font-mono text-[10px] text-grey-3 sm:flex">
+          <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 font-mono text-[10px] text-emerald-600 sm:flex">
             <motion.span
-              className="h-1.5 w-1.5 rounded-full bg-[#30a46c]"
+              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
               animate={{ scale: [1, 1.7, 1], opacity: [1, 0.45, 1] }}
               transition={{ duration: 1.8, repeat: Infinity }}
             />
-            9 live bindings healthy
+            2 editors live
           </div>
         </div>
         <div className="grid min-h-[460px] lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -311,7 +325,7 @@ function FeatureOperatingSystem() {
         </div>
       </motion.div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-3">
+      <div ref={cardsRef} className="mt-5 grid gap-5 lg:grid-cols-3">
         <FeatureCard
           icon="lucide:git-compare-arrows"
           title="Version diffs"
@@ -382,6 +396,8 @@ function FeatureCanvas() {
         </motion.div>
       ))}
 
+      <LiveCursors />
+
       <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 rounded-2xl border border-line bg-surface/90 p-2.5 shadow-sm backdrop-blur">
         {['logos:aws', 'logos:terraform-icon', 'logos:kubernetes', 'logos:redis', 'logos:github-actions'].map((icon) => (
           <span key={icon} className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-paper">
@@ -435,13 +451,7 @@ function FeatureCodePanel() {
 
 function FeatureCard({ icon, title, body, children }: { icon: string; title: string; body: string; children: React.ReactNode }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={{ duration: 0.6 }}
-      className="overflow-hidden rounded-[26px] border border-line bg-surface"
-    >
+    <div className="feat-card overflow-hidden rounded-[26px] border border-line bg-surface">
       <div className="p-6">
         <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl border border-line bg-paper">
           <Icon icon={icon} width={21} />
@@ -450,7 +460,7 @@ function FeatureCard({ icon, title, body, children }: { icon: string; title: str
         <p className="mt-2 min-h-[48px] text-sm leading-6 text-grey-4">{body}</p>
       </div>
       {children}
-    </motion.div>
+    </div>
   )
 }
 

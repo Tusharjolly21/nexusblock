@@ -1,0 +1,16 @@
+
+/* Typewriter caret for the landing canvas→doc demo. */
+@keyframes nbCaretBlink { 50% { opacity: 0; } }
+.nb-caret-bar {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  border-radius: 1px;
+  background: currentColor;
+  animation: nbCaretBlink 1s step-end infinite;
+}
+
+/* Gentle float for collaborator avatars on the feature grid. */
+@keyframes nbFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
