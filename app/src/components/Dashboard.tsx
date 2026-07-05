@@ -127,12 +127,12 @@ export function Dashboard() {
   if (!folderExists) return <Navigate to="/dashboard/all" replace />
 
   return (
-    <div className="grid h-full min-h-screen grid-cols-[264px_1fr] overflow-hidden bg-paper text-ink">
-      <aside className="flex min-h-0 flex-col border-r border-line bg-surface/80 px-4 py-4 backdrop-blur-xl">
+    <div className="grid h-full min-h-screen grid-cols-[228px_1fr] overflow-hidden bg-paper text-ink">
+      <aside className="flex min-h-0 flex-col border-r border-line bg-surface/80 px-3 py-3 backdrop-blur-xl">
         <div className="relative">
           <button
             onClick={() => setTeamMenuOpen((v) => !v)}
-            className="flex w-full items-center gap-2.5 rounded-2xl border border-line bg-paper px-3 py-2.5 text-left shadow-[0_16px_36px_-30px_rgba(0,0,0,.55)] transition-colors hover:border-ink"
+            className="flex w-full items-center gap-2.5 rounded-xl border border-line bg-paper px-2.5 py-2.5 text-left shadow-[0_16px_36px_-30px_rgba(0,0,0,.55)] transition-colors hover:border-ink"
             aria-expanded={teamMenuOpen}
           >
             <BrandMark />
@@ -153,14 +153,14 @@ export function Dashboard() {
           )}
         </div>
 
-        <nav className="mt-6 space-y-1">
+        <nav className="mt-5 space-y-1">
           <SideItem active={activeFolder === 'all' && tab === 'all'} icon="lucide:layout-grid" label="All files" hint="A" onClick={() => { setTab('all'); openFolder('all') }} />
           <SideItem icon="lucide:clock-3" label="Recents" hint="R" active={tab === 'recents'} onClick={() => { setTab('recents'); openFolder('all') }} />
           <SideItem icon="lucide:user-round" label="Created by me" hint="M" active={tab === 'mine'} onClick={() => setTab('mine')} />
           <SideItem icon="lucide:inbox" label="Unsorted" hint="U" active={tab === 'unsorted'} onClick={() => setTab('unsorted')} />
         </nav>
 
-        <div className="mt-6">
+        <div className="mt-5">
           <div className="mb-2 flex items-center justify-between px-2 font-mono text-[11px] uppercase tracking-[0.22em] text-grey-3">
             Team folders
             <button
@@ -187,7 +187,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-auto space-y-3 pt-5">
+        <div className="mt-auto space-y-2 pt-5">
           <div className="rounded-2xl border border-line bg-paper p-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold">Free workspace</div>
@@ -196,19 +196,10 @@ export function Dashboard() {
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-grey-1">
               <div className="h-full rounded-full bg-ink" style={{ width: `${Math.min(100, (files.length / 3) * 100)}%` }} />
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-grey-3">Private files, versions, and team history.</p>
             <button className="mt-3 w-full rounded-xl bg-ink px-3 py-2 text-sm font-semibold text-paper">Upgrade</button>
           </div>
 
-          <div className="space-y-1">
-            <FeatureLink icon="lucide:bot" label="Nexusbot" badge="BETA" />
-            <FeatureLink icon="lucide:sparkles" label="AI presets" />
-            <FeatureLink icon="lucide:palette" label="Custom styles" />
-            <FeatureLink icon="simple-icons:github" label="GitHub sync" badge="BETA" />
-            <FeatureLink icon="lucide:lock" label="Private files" badge="PRO" />
-            <FeatureLink icon="lucide:archive" label="Archive" />
-            <FeatureLink icon="lucide:terminal-square" label="MCP" />
-          </div>
+          <FeatureLink icon="lucide:settings-2" label="Workspace settings" />
 
           <button onClick={() => create('blank')} className="flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper">
             New file <Icon icon="lucide:chevron-down" width={16} />
@@ -217,21 +208,21 @@ export function Dashboard() {
       </aside>
 
       <main className="min-w-0 overflow-y-auto">
-        <header className="sticky top-0 z-20 border-b border-line bg-paper/86 px-6 py-3 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-line bg-paper/86 px-5 py-3 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <div className="flex rounded-full border border-line bg-surface p-1">
+            <div className="flex rounded-xl border border-line bg-surface p-1">
               {(['all', 'recents', 'mine', 'unsorted'] as ViewTab[]).map((item) => (
                 <button
                   key={item}
                   onClick={() => setTab(item)}
-                  className={'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ' + (tab === item ? 'bg-ink text-paper' : 'text-grey-3 hover:text-ink')}
+                  className={'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ' + (tab === item ? 'bg-ink text-paper' : 'text-grey-3 hover:text-ink')}
                 >
                   {tabLabel(item)}
                 </button>
               ))}
             </div>
 
-            <div className="ml-auto flex w-[min(360px,34vw)] items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2 focus-within:border-ink">
+            <div className="ml-auto flex w-[min(420px,38vw)] items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 focus-within:border-ink">
               <Icon icon="lucide:search" width={17} className="text-grey-3" />
               <input
                 value={query}
@@ -244,7 +235,7 @@ export function Dashboard() {
 
             <button
               onClick={() => copy('Invite link', inviteUrl)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-ink px-3.5 py-2 text-sm font-semibold text-paper"
+              className="inline-flex items-center gap-2 rounded-xl bg-ink px-3.5 py-2 text-sm font-semibold text-paper"
             >
               <Icon icon="lucide:send" width={16} /> {copied === 'Invite link' ? 'Copied' : 'Invite'}
             </button>
@@ -263,18 +254,15 @@ export function Dashboard() {
           </div>
         </header>
 
-        <section className="px-6 py-5">
-          <div className="flex items-start justify-between gap-6">
+        <section className="px-5 py-4">
+          <div className="flex items-start justify-between gap-5">
             <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-grey-4">
-                <Icon icon="lucide:activity" width={14} /> {greeting()}, {profile?.name || 'there'}
-              </div>
-              <h1 className="font-display text-3xl font-semibold tracking-tight">Build the architecture workspace.</h1>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-grey-3">
-                Create files, import diagrams, connect coding tools, and keep docs plus canvas history together in {workspace}.
+              <h1 className="font-display text-2xl font-semibold tracking-tight">Architecture workspace</h1>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-grey-3">
+                Files, docs, imports, and coding-tool setup for {workspace}.
               </p>
             </div>
-            <div className="hidden items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2.5 2xl:flex">
+            <div className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 2xl:flex">
               <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-500/12 text-emerald-600">
                 <Icon icon="lucide:check" width={16} />
               </span>
@@ -287,7 +275,7 @@ export function Dashboard() {
 
           <input ref={importRef} type="file" hidden multiple accept=".vsdx,.drawio,.pdf,.svg,.png,.jpg,.jpeg" onChange={(e) => handleImports(e.target.files)} />
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
+          <div className="mt-4 grid gap-2 lg:grid-cols-4">
             <ActionCard icon="lucide:plus" title="Create blank file" body="Start with a clean canvas and doc." onClick={() => create('blank')} />
             <ActionCard icon="lucide:blocks" title="Browse catalog" body="Insert architecture, ERD, flow, and sequence starters." onClick={() => setPicking(true)} />
             <ActionCard icon="lucide:upload-cloud" title="Import diagrams" body={imported.length ? `${imported.length} file${imported.length > 1 ? 's' : ''} staged from onboarding/dashboard.` : 'Bring .drawio, .vsdx, PDF, SVG, or PNG references.'} onClick={() => importRef.current?.click()} />
@@ -300,7 +288,7 @@ export function Dashboard() {
             />
           </div>
 
-          <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="mt-4">
             <div className="overflow-hidden rounded-2xl border border-line bg-surface">
               <div className="flex items-center justify-between border-b border-line px-4 py-3">
                 <div>
@@ -332,22 +320,6 @@ export function Dashboard() {
                 </div>
               )}
             </div>
-
-            <aside className="space-y-4">
-              <Panel title="Recommended next" icon="lucide:wand-sparkles">
-                <MiniAction icon="lucide:git-branch" title="Create version review file" body="Seed a diagram with visual diff examples." onClick={() => create('system', 'Version review workspace')} />
-                <MiniAction icon="lucide:message-square" title="Try anchored comments" body="Open a file and comment on exact shapes." onClick={() => files[0] ? openFile(files[0].id) : create('system')} />
-                <MiniAction icon="lucide:file-code-2" title="Diagram as code" body="Open DSL panel and generate native shapes." onClick={() => create('git-s3', 'Diagram as code starter')} />
-              </Panel>
-
-              <Panel title="Setup status" icon="lucide:clipboard-check">
-                <Checklist done label={`Workspace: ${workspace}`} />
-                <Checklist done={!!profile?.preferredTone} label={`Mode: ${profile?.preferredTone ?? 'light'}`} />
-                <Checklist done={!!profile?.mcpClient} label={`MCP: ${profile?.mcpClient ?? 'not selected'}`} />
-                <Checklist done={!!profile?.invitedEmails?.length} label={profile?.invitedEmails?.length ? `${profile.invitedEmails.length} teammate invite${profile.invitedEmails.length > 1 ? 's' : ''}` : 'No teammates invited'} />
-                <Checklist done={!!imported.length} label={imported.length ? `${imported.length} diagram reference${imported.length > 1 ? 's' : ''}` : 'No references imported'} />
-              </Panel>
-            </aside>
           </div>
         </section>
       </main>
@@ -372,8 +344,8 @@ export function Dashboard() {
 
 function BrandMark() {
   return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-ink text-paper">
-      <Logo size={18} />
+    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-ink text-paper">
+      <Logo size={16} />
     </span>
   )
 }
@@ -783,7 +755,7 @@ function UploadBox({ title, button, hint }: { title: string; button: string; hin
 
 function SideItem({ icon, label, hint, active, onClick }: { icon: string; label: string; hint: string; active?: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className={'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ' + (active ? 'bg-ink text-paper' : 'text-grey-4 hover:bg-grey-1 hover:text-ink')}>
+    <button onClick={onClick} className={'flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ' + (active ? 'bg-ink text-paper' : 'text-grey-4 hover:bg-grey-1 hover:text-ink')}>
       <Icon icon={icon} width={17} />
       <span className="flex-1 text-left">{label}</span>
       <span className={active ? 'text-paper/50' : 'text-grey-3'}>{hint}</span>
@@ -823,7 +795,7 @@ function FolderRow({ folder, active, count, onOpen, onRename, onDelete }: { fold
 
 function FeatureLink({ icon, label, badge }: { icon: string; label: string; badge?: string }) {
   return (
-    <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-grey-4 hover:bg-grey-1 hover:text-ink">
+    <button className="flex w-full items-center gap-2.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-grey-4 hover:bg-grey-1 hover:text-ink">
       <Icon icon={icon} width={16} />
       <span className="flex-1 text-left">{label}</span>
       {badge && <span className="rounded-full bg-grey-1 px-2 py-0.5 text-[10px] font-bold text-grey-4">{badge}</span>}
@@ -833,18 +805,17 @@ function FeatureLink({ icon, label, badge }: { icon: string; label: string; badg
 
 function ActionCard({ icon, title, body, meta, onClick }: { icon: string; title: string; body: string; meta?: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="group rounded-3xl border border-line bg-surface p-5 text-left transition-colors hover:border-ink">
-      <div className="flex items-start justify-between gap-4">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-grey-1 text-ink">
-          <Icon icon={icon} width={22} />
+    <button onClick={onClick} className="group flex min-h-[78px] items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left transition-colors hover:border-ink hover:bg-paper">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-grey-1 text-ink">
+        <Icon icon={icon} width={17} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center justify-between gap-2">
+          <span className="block truncate text-sm font-semibold">{title}</span>
+          {meta && <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-grey-4">{meta}</span>}
         </span>
-        {meta && <span className="rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-grey-4">{meta}</span>}
-      </div>
-      <div className="mt-8 font-display text-xl font-semibold">{title}</div>
-      <p className="mt-1 text-sm leading-relaxed text-grey-3">{body}</p>
-      <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-grey-4 group-hover:text-ink">
-        Open <Icon icon="lucide:arrow-right" width={15} />
-      </div>
+        <span className="mt-1 block text-xs leading-4 text-grey-3">{body}</span>
+      </span>
     </button>
   )
 }
@@ -853,16 +824,16 @@ function FileRow({ file, snippet, folders, onOpen, onDelete, onMove }: { file: F
   const [menu, setMenu] = useState(false)
   const folderName = folders.find((f) => f.id === file.folderId)?.name ?? 'Unsorted'
   return (
-    <div className="group grid grid-cols-[minmax(0,1fr)_180px_150px_100px] items-center gap-4 px-5 py-4 hover:bg-grey-1/50">
-      <button onClick={() => onOpen(file.id)} className="flex min-w-0 items-center gap-4 text-left">
+    <div className="group grid grid-cols-[minmax(0,1fr)_120px_92px_72px] items-center gap-3 px-4 py-3 hover:bg-grey-1/50">
+      <button onClick={() => onOpen(file.id)} className="flex min-w-0 items-center gap-3 text-left">
         <FileThumb id={file.id} template={file.template} />
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold text-ink">{file.title}</span>
           <span className="mt-1 block truncate text-xs text-grey-3">{snippet ?? getTemplate(file.template).name}</span>
         </span>
       </button>
-      <div className="truncate text-sm text-grey-3">{folderName}</div>
-      <div className="text-sm text-grey-3">{timeAgo(file.updatedAt)}</div>
+      <div className="truncate text-xs text-grey-3">{folderName}</div>
+      <div className="text-xs text-grey-3">{timeAgo(file.updatedAt)}</div>
       <div className="relative flex justify-end gap-1">
         <button onClick={() => setMenu((v) => !v)} className="grid h-8 w-8 place-items-center rounded-xl text-grey-3 hover:bg-surface hover:text-ink">
           <Icon icon="lucide:folder-input" width={15} />
@@ -897,7 +868,7 @@ function MoveRow({ label, active, onClick }: { label: string; active: boolean; o
 function FileThumb({ id, template }: { id: string; template: TemplateId }) {
   const thumb = getThumb(id)
   return (
-    <span className="grid h-14 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-line bg-[radial-gradient(circle,var(--color-canvas-dot)_1px,transparent_1px)] [background-size:12px_12px]">
+    <span className="grid h-11 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-[radial-gradient(circle,var(--color-canvas-dot)_1px,transparent_1px)] [background-size:10px_10px]">
       {thumb ? <img src={thumb} alt="" className="h-full w-full object-contain p-1.5" /> : <Icon icon={templateIcon(template)} width={22} className="text-grey-3" />}
     </span>
   )
@@ -905,52 +876,18 @@ function FileThumb({ id, template }: { id: string; template: TemplateId }) {
 
 function EmptyState({ onCreate, onCatalog }: { onCreate: () => void; onCatalog: () => void }) {
   return (
-    <div className="grid min-h-[340px] place-items-center p-8 text-center">
+    <div className="grid min-h-[280px] place-items-center p-6 text-center">
       <div>
-        <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-grey-1">
-          <Icon icon="lucide:file-plus-2" width={28} />
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-grey-1">
+          <Icon icon="lucide:file-plus-2" width={22} />
         </div>
-        <h3 className="mt-5 font-display text-2xl font-semibold">Your workspace is ready.</h3>
+        <h3 className="mt-4 font-display text-xl font-semibold">Your workspace is ready.</h3>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-grey-3">Start with a proven system diagram, or open a blank file and build docs plus canvas together.</p>
         <div className="mt-6 flex justify-center gap-3">
           <button onClick={onCreate} className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper">Create starter</button>
           <button onClick={onCatalog} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:border-ink">Browse catalog</button>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Panel({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-3xl border border-line bg-surface p-5">
-      <div className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
-        <Icon icon={icon} width={18} /> {title}
-      </div>
-      <div className="space-y-3">{children}</div>
-    </div>
-  )
-}
-
-function MiniAction({ icon, title, body, onClick }: { icon: string; title: string; body: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex w-full gap-3 rounded-2xl border border-line p-3 text-left hover:border-ink">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-grey-1"><Icon icon={icon} width={17} /></span>
-      <span>
-        <span className="block text-sm font-semibold">{title}</span>
-        <span className="mt-0.5 block text-xs leading-relaxed text-grey-3">{body}</span>
-      </span>
-    </button>
-  )
-}
-
-function Checklist({ done, label }: { done: boolean; label: string }) {
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className={'grid h-6 w-6 place-items-center rounded-full ' + (done ? 'bg-emerald-500/12 text-emerald-600' : 'bg-grey-1 text-grey-3')}>
-        <Icon icon={done ? 'lucide:check' : 'lucide:minus'} width={13} />
-      </span>
-      <span className={done ? 'text-ink' : 'text-grey-3'}>{label}</span>
     </div>
   )
 }
@@ -974,10 +911,6 @@ function templateIcon(template: TemplateId) {
   }
 }
 
-function greeting() {
-  const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-}
 
 function timeAgo(ts: number) {
   const s = Math.floor((Date.now() - ts) / 1000)

@@ -5,7 +5,7 @@ import { Icon } from '@iconify/react'
 import { useAuth } from '../store/useAuth'
 import { useSelfDrawDiagram, useStaggerReveal } from './landing/anime'
 import { CountUp } from './landing/CountUp'
-import { CanvasToDoc } from './landing/CanvasToDoc'
+import { CinematicShowcase } from './landing/CinematicShowcase'
 import { FeatureGrid } from './landing/FeatureGrid'
 import { Reveal } from './landing/Reveal'
 import { LiveCursors } from './landing/LiveCursors'
@@ -67,7 +67,7 @@ export function Landing() {
         <LogoStrip />
         <ProductShowcase />
 
-        <CanvasToDoc />
+        <CinematicShowcase />
 
         <FeatureOperatingSystem />
 
@@ -397,15 +397,6 @@ function FeatureCanvas() {
       ))}
 
       <LiveCursors />
-
-      <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 rounded-2xl border border-line bg-surface/90 p-2.5 shadow-sm backdrop-blur">
-        {['logos:aws', 'logos:terraform-icon', 'logos:kubernetes', 'logos:redis', 'logos:github-actions'].map((icon) => (
-          <span key={icon} className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-paper">
-            <Icon icon={icon} width={21} />
-          </span>
-        ))}
-        <span className="ml-auto rounded-full bg-ink px-3 py-1.5 font-mono text-[10px] text-paper">pull canvas</span>
-      </div>
     </div>
   )
 }
