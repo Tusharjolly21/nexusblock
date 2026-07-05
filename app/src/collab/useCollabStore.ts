@@ -17,6 +17,7 @@ import {
   type TLStoreWithStatus,
 } from 'tldraw'
 import { collabWsUrl } from '../lib/collab'
+import { getFirebaseIdToken } from '../lib/authToken'
 
 /**
  * A tldraw store synced in real time through a self-hosted Yjs WebSocket server.
@@ -35,18 +36,31 @@ export function useCollabStore(roomId: string, shapeUtils: TLAnyShapeUtilConstru
 
   useEffect(() => {
     if (!enabled) return
+    let disposed = false
     setStatus({ status: 'loading' })
 
-    const yDoc = new Y.Doc()
-    const yProvider = new WebsocketProvider(collabWsUrl, roomId, yDoc)
-    const yStore = yDoc.getMap<TLRecord>('tl_records')
-    const { awareness } = yProvider
+    let yDoc: Y.Doc | null = null
+    let yProvider: WebsocketProvider | null = null
     const disposers: (() => void)[] = []
-    let started = false
 
-    const start = () => {
-      if (started) return
-      started = true
+    void getFirebaseIdToken().then((token) => {
+      if (disposed) return
+      if (!token) {
+        setStatus({ status: 'not-synced', store })
+        return
+      }
+
+      const doc = new Y.Doc()
+      const provider = new WebsocketProvider(collabWsUrl, roomId, doc, { params: { token } })
+      yDoc = doc
+      yProvider = provider
+      const yStore = doc.getMap<TLRecord>('tl_records')
+      const { awareness } = provider
+      let started = false
+
+      const start = () => {
+        if (started) return
+        started = true
 
       // Yjs → store.
       const observer = (events: Y.YEvent<Y.Map<TLRecord>>[], tx: Y.Transaction) => {
@@ -72,7 +86,7 @@ export function useCollabStore(roomId: string, shapeUtils: TLAnyShapeUtilConstru
       disposers.push(
         store.listen(
           ({ changes }) => {
-            yDoc.transact(() => {
+            doc.transact(() => {
               Object.values(changes.added).forEach((r) => yStore.set(r.id, r))
               Object.values(changes.updated).forEach(([, r]) => yStore.set(r.id, r))
               Object.values(changes.removed).forEach((r) => yStore.delete(r.id))
@@ -85,7 +99,7 @@ export function useCollabStore(roomId: string, shapeUtils: TLAnyShapeUtilConstru
       // Initial hydrate (skip presence records — those flow through awareness).
       transact(() => {
         if (yStore.size === 0) {
-          yDoc.transact(() => {
+          doc.transact(() => {
             store.allRecords().forEach((r) => { if (r.typeName !== 'instance_presence') yStore.set(r.id, r) })
           })
         } else {
@@ -99,7 +113,7 @@ export function useCollabStore(roomId: string, shapeUtils: TLAnyShapeUtilConstru
         const p = getUserPreferences()
         return { id: p.id, color: p.color ?? '#4465e9', name: p.name ?? 'Anonymous', imageUrl: '', meta: {} }
       })
-      const presenceId = InstancePresenceRecordType.createId(yDoc.clientID.toString())
+      const presenceId = InstancePresenceRecordType.createId(doc.clientID.toString())
       // Cast: presence derivation only reads id/name/color; the full TLUser record type is stricter than needed.
       const presenceDerivation = createPresenceStateDerivation($user as never, { instanceId: presenceId })(store)
       disposers.push(
@@ -111,7 +125,7 @@ export function useCollabStore(roomId: string, shapeUtils: TLAnyShapeUtilConstru
       const handleAwareness = () => {
         const toPut: TLInstancePresence[] = []
         awareness.getStates().forEach((state, clientId) => {
-          if (clientId === yDoc.clientID) return
+          if (clientId === doc.clientID) return
           const p = (state as { presence?: TLInstancePresence })?.presence
           if (p) toPut.push(p)
         })
@@ -128,28 +142,30 @@ export function useCollabStore(roomId: string, shapeUtils: TLAnyShapeUtilConstru
       console.log(`[collab] ${roomId} sync:`, synced)
       if (synced) start()
     }
-    yProvider.on('sync', onSync)
-    disposers.push(() => yProvider.off('sync', onSync))
+      provider.on('sync', onSync)
+      disposers.push(() => provider.off('sync', onSync))
 
     // Surface connection trouble instead of hanging silently on "loading".
     const onStatus = (e: { status: string }) => {
       // eslint-disable-next-line no-console
       console.log(`[collab] ${roomId} status:`, e.status)
     }
-    yProvider.on('status', onStatus)
-    disposers.push(() => yProvider.off('status', onStatus))
-    yProvider.on('connection-error', (err: unknown) => {
+      provider.on('status', onStatus)
+      disposers.push(() => provider.off('status', onStatus))
+      provider.on('connection-error', (err: unknown) => {
       // eslint-disable-next-line no-console
       console.error(`[collab] ${roomId} connection error:`, err)
-    })
+      })
 
     // If the room already synced before we attached the listener, start now.
-    if (yProvider.synced) start()
+      if (provider.synced) start()
+    })
 
     return () => {
+      disposed = true
       disposers.forEach((d) => d())
-      yProvider.destroy()
-      yDoc.destroy()
+      yProvider?.destroy()
+      yDoc?.destroy()
     }
   }, [roomId, store, enabled])
 

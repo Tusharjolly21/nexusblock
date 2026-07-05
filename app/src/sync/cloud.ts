@@ -85,6 +85,8 @@ export type ShareSettings = {
 export const defaultShare = (): ShareSettings => ({ access: 'restricted', linkRole: 'view', invites: [] })
 
 const shareRef = (fileId: string) => doc(db!, 'shares', fileId)
+const publicShareRef = (fileId: string) => doc(db!, 'publicShares', fileId)
+const grantRef = (fileId: string, email: string) => doc(db!, 'shareGrants', fileId, 'recipients', email.toLowerCase())
 
 export type ShareDoc = ShareSettings & { ownerUid: string; title?: string }
 
@@ -99,7 +101,28 @@ export async function pullShare(fileId: string): Promise<ShareDoc | null> {
 /** Save a file's share settings. */
 export async function pushShare(fileId: string, ownerUid: string, title: string, settings: ShareSettings): Promise<void> {
   if (!db) return
+  const previous = await pullShare(fileId)
   await setDoc(shareRef(fileId), { ownerUid, title, ...settings, updatedAt: serverTimestamp() }, { merge: true })
+  await setDoc(publicShareRef(fileId), {
+    ownerUid,
+    title,
+    access: settings.access,
+    linkRole: settings.linkRole,
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+
+  const nextInvites = new Map(settings.invites.map((invite) => [invite.email.toLowerCase(), invite.role]))
+  await Promise.all(settings.invites.map((invite) =>
+    setDoc(grantRef(fileId, invite.email), {
+      ownerUid,
+      title,
+      email: invite.email.toLowerCase(),
+      role: invite.role,
+      updatedAt: serverTimestamp(),
+    }, { merge: true }),
+  ))
+  const stale = previous?.invites?.filter((invite) => !nextInvites.has(invite.email.toLowerCase())) ?? []
+  await Promise.all(stale.map((invite) => deleteDoc(grantRef(fileId, invite.email))))
 }
 
 export async function queueShareInvite(input: {
@@ -135,6 +158,21 @@ function roleFor(s: ShareDoc, viewerUid: string | null, viewerEmail: string | nu
   return null
 }
 
+type PublicShareDoc = Pick<ShareDoc, 'ownerUid' | 'title' | 'access' | 'linkRole'>
+type ShareGrantDoc = { ownerUid: string; title?: string; email: string; role: ShareRole }
+
+async function pullPublicShare(fileId: string): Promise<PublicShareDoc | null> {
+  if (!db) return null
+  const snap = await getDoc(publicShareRef(fileId))
+  return snap.exists() ? (snap.data() as PublicShareDoc) : null
+}
+
+async function pullGrant(fileId: string, email: string | null): Promise<ShareGrantDoc | null> {
+  if (!db || !email) return null
+  const snap = await getDoc(grantRef(fileId, email))
+  return snap.exists() ? (snap.data() as ShareGrantDoc) : null
+}
+
 /**
  * Resolve whether a viewer may open a shared file, and with what role. Reads the
  * `shares/{fileId}` doc — the single source of truth an owner controls from the
@@ -145,11 +183,24 @@ export async function resolveShareAccess(
   viewerUid: string | null,
   viewerEmail: string | null,
 ): Promise<ShareAccess> {
-  const s = await pullShare(fileId)
-  if (!s) return { status: 'notfound' }
-  const role = roleFor(s, viewerUid, viewerEmail)
-  if (!role) return { status: 'denied' }
-  return { status: 'granted', ownerUid: s.ownerUid, role, title: s.title || 'Shared file' }
+  try {
+    const s = await pullShare(fileId)
+    if (s) {
+      const role = roleFor(s, viewerUid, viewerEmail)
+      return role ? { status: 'granted', ownerUid: s.ownerUid, role, title: s.title || 'Shared file' } : { status: 'denied' }
+    }
+  } catch {
+    // Non-owners cannot read private share docs; continue with public/grant docs.
+  }
+
+  const grant = await pullGrant(fileId, viewerEmail)
+  if (grant) return { status: 'granted', ownerUid: grant.ownerUid, role: grant.role, title: grant.title || 'Shared file' }
+
+  const publicShare = await pullPublicShare(fileId)
+  if (!publicShare) return { status: 'notfound' }
+  if (viewerUid === publicShare.ownerUid) return { status: 'granted', ownerUid: publicShare.ownerUid, role: 'edit', title: publicShare.title || 'Shared file' }
+  if (publicShare.access !== 'link') return { status: 'denied' }
+  return { status: 'granted', ownerUid: publicShare.ownerUid, role: publicShare.linkRole, title: publicShare.title || 'Shared file' }
 }
 
 /** Remove a file's cloud content (on delete). */
@@ -157,6 +208,20 @@ export async function deleteContent(uid: string, fileId: string): Promise<void> 
   if (!db) return
   try {
     await deleteDoc(contentRef(uid, fileId))
+  } catch {
+    /* best-effort */
+  }
+}
+
+export async function deleteShareArtifacts(fileId: string): Promise<void> {
+  if (!db) return
+  try {
+    const existing = await pullShare(fileId)
+    await Promise.all([
+      deleteDoc(shareRef(fileId)),
+      deleteDoc(publicShareRef(fileId)),
+      ...(existing?.invites ?? []).map((invite) => deleteDoc(grantRef(fileId, invite.email))),
+    ])
   } catch {
     /* best-effort */
   }

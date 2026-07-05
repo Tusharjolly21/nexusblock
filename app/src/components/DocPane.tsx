@@ -13,6 +13,7 @@ import { useApp, selectCurrentFile } from '../store/useApp'
 import { useAuth } from '../store/useAuth'
 import { cloudEnabled, pullContent, pushContent } from '../sync/cloud'
 import { isCollabConfigured, collabWsUrl, roomIdForFile } from '../lib/collab'
+import { useFirebaseIdToken } from '../lib/authToken'
 import { useTheme, isDarkTone } from '../store/useTheme'
 import { useEditorUi } from '../store/useEditorUi'
 import { getTemplate } from '../onboarding/templates'
@@ -61,17 +62,20 @@ export function DocPane() {
   const storageKey = `nb-doc-${fileId}`
   const [params] = useSearchParams()
   const live = params.get('live') === '1' && isCollabConfigured
+  const liveToken = useFirebaseIdToken(live)
 
   // Shared-file access: load from the owner's cloud copy; viewers are read-only.
   const sharedFrom = file?.sharedFrom ?? null
+  const uid = useAuth((s) => s.uid)
+  const ownerUid = sharedFrom ?? uid
   const canEdit = !sharedFrom || file?.sharedRole === 'edit'
 
   const collab = useMemo(() => {
-    if (!live) return null
+    if (!live || !liveToken) return null
     const yDoc = new Y.Doc()
-    const provider = new WebsocketProvider(collabWsUrl, `${roomIdForFile(fileId)}:doc`, yDoc)
+    const provider = new WebsocketProvider(collabWsUrl, `${roomIdForFile(fileId, ownerUid)}:doc`, yDoc, { params: { token: liveToken } })
     return { yDoc, provider, fragment: yDoc.getXmlFragment('document-store') }
-  }, [fileId, live])
+  }, [fileId, live, liveToken, ownerUid])
 
   useEffect(() => {
     return () => {
@@ -84,7 +88,7 @@ export function DocPane() {
   const editor = useCreateBlockNote(
     {
       schema,
-      initialContent: live ? undefined : loadContent(storageKey, file?.template),
+      initialContent: collab ? undefined : loadContent(storageKey, file?.template),
       collaboration: collab
         ? {
             fragment: collab.fragment,
@@ -94,7 +98,7 @@ export function DocPane() {
           }
         : undefined,
     },
-    [fileId, live],
+    [fileId, live, liveToken, ownerUid],
   )
   const setDocExporter = useDocStore((s) => s.setDocExporter)
   const setDocBridge = useDocStore((s) => s.setDocBridge)

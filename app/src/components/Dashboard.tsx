@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { useApp, type FileMeta, type Folder, type Profile } from '../store/useApp'
 import { useAuth } from '../store/useAuth'
-import { cloudEnabled, deleteContent } from '../sync/cloud'
+import { cloudEnabled, deleteContent, deleteShareArtifacts } from '../sync/cloud'
 import { getTemplate, type TemplateId } from '../onboarding/templates'
 import { getThumb } from '../canvas/thumbnail'
 import { docText, matchSnippet } from '../canvas/search'
@@ -32,6 +32,29 @@ const MCP_COMMANDS: Record<string, string> = {
   cursor: 'cursor://settings/mcp?server=nexusblock',
   vscode: 'code --add-mcp nexusblock=https://app.nexusblock.io/api/mcp',
   'github-copilot': 'gh nexusblock mcp connect',
+}
+
+const MAX_IMAGE_UPLOAD_BYTES = 900_000
+const SAFE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
+
+async function readSafeImageDataUrl(file: File): Promise<string | null> {
+  if (!SAFE_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_UPLOAD_BYTES) return null
+  if (file.type !== 'image/svg+xml') return readFileAsDataUrl(file)
+  const raw = await file.text()
+  const sanitized = raw
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/\s(href|xlink:href)\s*=\s*(['"])\s*javascript:[\s\S]*?\2/gi, '')
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(sanitized)))}`
+}
+
+function readFileAsDataUrl(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
+    reader.onerror = () => resolve(null)
+    reader.readAsDataURL(file)
+  })
 }
 
 export function Dashboard() {
@@ -83,7 +106,10 @@ export function Dashboard() {
   const removeFile = (id: string) => {
     deleteFile(id)
     const uid = useAuth.getState().uid
-    if (uid && cloudEnabled()) deleteContent(uid, id).catch(() => {})
+    if (uid && cloudEnabled()) {
+      deleteContent(uid, id).catch(() => {})
+      deleteShareArtifacts(id).catch(() => {})
+    }
   }
 
   const onPick = (id: TemplateId) => {
@@ -734,19 +760,18 @@ function ProfileSettings({
 
   const choosePhoto = (file: File | undefined) => {
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setStatus({ type: 'error', text: 'Choose an image file for your profile picture.' })
+    if (!SAFE_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setStatus({ type: 'error', text: 'Choose a PNG, JPG, WebP, or safe SVG under 900 KB.' })
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : null
+    void readSafeImageDataUrl(file).then((result) => {
       if (result) {
         setPhoto(result)
         setStatus(null)
+      } else {
+        setStatus({ type: 'error', text: 'That image could not be used safely.' })
       }
-    }
-    reader.readAsDataURL(file)
+    })
   }
 
   const save = async () => {
@@ -897,14 +922,11 @@ function CustomIconsSettings({ context }: { context: DashboardContext }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const icons = context.profile?.customIcons ?? []
   const onPick = (file: File | undefined) => {
-    if (!file || !file.type.startsWith('image/')) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+    if (!file) return
+    void readSafeImageDataUrl(file).then((dataUrl) => {
       if (!dataUrl) return
       updateProfile({ customIcons: [{ id: crypto.randomUUID(), name: file.name, dataUrl, createdAt: Date.now() }, ...icons].slice(0, 24) })
-    }
-    reader.readAsDataURL(file)
+    })
   }
   const remove = (id: string) => updateProfile({ customIcons: icons.filter((item) => item.id !== id) })
   return (
@@ -932,16 +954,38 @@ function CustomIconsSettings({ context }: { context: DashboardContext }) {
 function ApiTokensSettings({ context, copied, copy }: { context: DashboardContext; copied: string | null; copy: (label: string, value: string) => Promise<void> }) {
   const updateProfile = useApp((s) => s.updateProfile)
   const [name, setName] = useState('Automation token')
+  const [freshToken, setFreshToken] = useState<{ id: string; secret: string } | null>(null)
   const tokens = context.profile?.apiTokens ?? []
-  const create = () => {
-    const token = `nb_${crypto.randomUUID().replaceAll('-', '')}`
-    updateProfile({ apiTokens: [{ id: crypto.randomUUID(), name: name.trim() || 'API token', token, createdAt: Date.now() }, ...tokens] })
+  const create = async () => {
+    const secret = `nb_${crypto.randomUUID().replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '')}`
+    const id = crypto.randomUUID()
+    updateProfile({
+      apiTokens: [{
+        id,
+        name: name.trim() || 'API token',
+        prefix: `${secret.slice(0, 7)}...${secret.slice(-4)}`,
+        tokenHash: await sha256(secret),
+        createdAt: Date.now(),
+      }, ...tokens],
+    })
+    setFreshToken({ id, secret })
   }
   const revoke = (id: string) => updateProfile({ apiTokens: tokens.filter((item) => item.id !== id) })
   return (
     <div className="max-w-4xl">
       <h3 className="font-display text-2xl font-semibold">API Tokens</h3>
-      <p className="mt-2 text-grey-3">Create scoped workspace tokens for automations. Tokens are saved locally/cloud-indexed for now.</p>
+      <p className="mt-2 text-grey-3">Create scoped workspace tokens for automations. Secrets are shown once; only a hash is saved.</p>
+      {freshToken && (
+        <div className="mt-5 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm">
+          <div className="font-semibold text-ink">Copy this token now. You will not be able to see it again.</div>
+          <div className="mt-2 flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2">
+            <code className="min-w-0 flex-1 truncate text-xs text-grey-4">{freshToken.secret}</code>
+            <button onClick={() => copy('New API token', freshToken.secret)} className="rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-paper">
+              {copied === 'New API token' ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mt-7 flex max-w-xl gap-3">
         <input value={name} onChange={(e) => setName(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 py-3 text-sm outline-none focus:border-sky-500" />
         <button onClick={create} className="rounded-xl bg-ink px-5 py-2 text-sm font-semibold text-paper">Create</button>
@@ -952,9 +996,8 @@ function ApiTokensSettings({ context, copied, copy }: { context: DashboardContex
             <Icon icon="lucide:key-round" width={18} />
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold">{item.name}</div>
-              <div className="truncate font-mono text-xs text-grey-3">{item.token}</div>
+              <div className="truncate font-mono text-xs text-grey-3">{item.prefix}</div>
             </div>
-            <button onClick={() => copy('API token', item.token)} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold">{copied === 'API token' ? 'Copied' : 'Copy'}</button>
             <button onClick={() => revoke(item.id)} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-rose-500">Revoke</button>
           </div>
         ))}
@@ -962,6 +1005,12 @@ function ApiTokensSettings({ context, copied, copy }: { context: DashboardContex
       </div>
     </div>
   )
+}
+
+async function sha256(value: string) {
+  const bytes = new TextEncoder().encode(value)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 function EditableField({ label, value, hint, onChange, onSave }: { label: string; value: string; hint: string; onChange: (value: string) => void; onSave: () => void }) {
@@ -992,10 +1041,8 @@ function SelectField({ label, value, options, hint, onChange }: { label: string;
 function UploadBox({ title, button, hint, value, onUpload }: { title: string; button: string; hint: string; value: string | null; onUpload: (dataUrl: string | null) => void }) {
   const ref = useRef<HTMLInputElement>(null)
   const pick = (file: File | undefined) => {
-    if (!file || !file.type.startsWith('image/')) return
-    const reader = new FileReader()
-    reader.onload = () => onUpload(typeof reader.result === 'string' ? reader.result : null)
-    reader.readAsDataURL(file)
+    if (!file) return
+    void readSafeImageDataUrl(file).then(onUpload)
   }
   return (
     <div>

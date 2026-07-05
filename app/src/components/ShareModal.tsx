@@ -105,6 +105,7 @@ export function ShareModal({ fileId, title, onClose }: { fileId: string; title: 
     setShare((s) => ({ ...s, invites: s.invites.filter((i) => i.email !== targetEmail) }))
 
   const goLive = () => {
+    if (uid && cloudEnabled()) void pushShare(fileId, uid, title, share)
     navigate(`/app/file/${fileId}?live=1`)
     onClose()
   }

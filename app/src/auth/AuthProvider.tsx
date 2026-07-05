@@ -48,6 +48,16 @@ function syncUser(user: User | null, isLoading: boolean) {
   })
 }
 
+function clearLocalWorkspaceCache() {
+  const exact = new Set(['nexusblock-app', 'nb-custom-icons-v1'])
+  const prefixes = ['nb-doc-', 'nb-code-', 'nb-comments-', 'nb-canvas-', 'nb-thumb-', 'nb-versions-', 'nb-seeded-']
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i)
+    if (!key) continue
+    if (exact.has(key) || prefixes.some((prefix) => key.startsWith(prefix))) localStorage.removeItem(key)
+  }
+}
+
 /** Firebase provider id → the label shown on our buttons. */
 const PROVIDER_NAME: Record<string, string> = {
   'google.com': 'Google',
@@ -195,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       logout: async () => {
         await signOut(fb)
+        clearLocalWorkspaceCache()
       },
     })
 

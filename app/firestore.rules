@@ -25,38 +25,49 @@ service cloud.firestore {
       return request.auth.token.email;
     }
 
-    function shareExists(fileId) {
-      return exists(/databases/$(database)/documents/shares/$(fileId));
+    function publicShareExists(fileId) {
+      return exists(/databases/$(database)/documents/publicShares/$(fileId));
     }
 
-    function share(fileId) {
-      return get(/databases/$(database)/documents/shares/$(fileId)).data;
+    function publicShare(fileId) {
+      return get(/databases/$(database)/documents/publicShares/$(fileId)).data;
     }
 
-    // Email is on an invite (with either role) → may view.
-    function invitedToView(s) {
-      return myEmail() != null && s.invites.hasAny([
-        { 'email': myEmail(), 'role': 'view' },
-        { 'email': myEmail(), 'role': 'edit' }
-      ]);
+    function grantExists(fileId) {
+      return myEmail() != null &&
+        exists(/databases/$(database)/documents/shareGrants/$(fileId)/recipients/$(myEmail()));
     }
 
-    // Email is on an invite with the 'edit' role → may edit.
-    function invitedToEdit(s) {
-      return myEmail() != null && s.invites.hasAny([
-        { 'email': myEmail(), 'role': 'edit' }
-      ]);
+    function grant(fileId) {
+      return get(/databases/$(database)/documents/shareGrants/$(fileId)/recipients/$(myEmail())).data;
     }
 
-    function canReadShared(fileId) {
-      return shareExists(fileId) &&
-        (share(fileId).access == 'link' || invitedToView(share(fileId)));
+    function ownsContent(fileId) {
+      return exists(/databases/$(database)/documents/workspaces/$(request.auth.uid)/content/$(fileId));
     }
 
-    function canEditShared(fileId) {
-      return shareExists(fileId) && (
-        (share(fileId).access == 'link' && share(fileId).linkRole == 'edit')
-        || invitedToEdit(share(fileId))
+    function canReadShared(uid, fileId) {
+      return (
+        publicShareExists(fileId) &&
+        publicShare(fileId).ownerUid == uid &&
+        publicShare(fileId).access == 'link'
+      ) || (
+        grantExists(fileId) &&
+        grant(fileId).ownerUid == uid &&
+        (grant(fileId).role == 'view' || grant(fileId).role == 'edit')
+      );
+    }
+
+    function canEditShared(uid, fileId) {
+      return (
+        publicShareExists(fileId) &&
+        publicShare(fileId).ownerUid == uid &&
+        publicShare(fileId).access == 'link' &&
+        publicShare(fileId).linkRole == 'edit'
+      ) || (
+        grantExists(fileId) &&
+        grant(fileId).ownerUid == uid &&
+        grant(fileId).role == 'edit'
       );
     }
 
@@ -66,16 +77,52 @@ service cloud.firestore {
 
       // Per-file content: owner always; shared users per the share doc.
       match /content/{fileId} {
-        allow read:  if signedIn() && (request.auth.uid == uid || canReadShared(fileId));
-        allow write: if signedIn() && (request.auth.uid == uid || canEditShared(fileId));
+        allow read:  if signedIn() && (request.auth.uid == uid || canReadShared(uid, fileId));
+        allow write: if signedIn() && (request.auth.uid == uid || canEditShared(uid, fileId));
       }
     }
 
-    // Share settings: readable by any signed-in user (to resolve a link);
-    // writable only by the file's owner.
+    // Private share settings: owner-only. Contains invite email list for the
+    // owner's share dialog and must not be readable by arbitrary signed-in users.
     match /shares/{fileId} {
-      allow read:  if signedIn();
-      allow write: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid && ownsContent(fileId);
+      allow update: if signedIn() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Public link metadata: enough to resolve "anyone with link", without
+    // exposing invite recipients.
+    match /publicShares/{fileId} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.access == 'link'
+      );
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid && ownsContent(fileId);
+      allow update: if signedIn() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Per-recipient invite grants. A user can read only their own grant; the
+    // owner can create/update/delete grants for their file.
+    match /shareGrants/{fileId}/recipients/{email} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        email == myEmail()
+      );
+      allow create: if signedIn() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        ownsContent(fileId) &&
+        request.resource.data.email == email;
+      allow update: if signedIn() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.email == resource.data.email;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
     // Invite email queue. A Cloud Function / Firebase email extension can watch

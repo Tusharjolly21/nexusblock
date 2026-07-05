@@ -13,5 +13,5 @@ export const isCollabConfigured = true
 /** WebSocket endpoint of the Yjs sync server. */
 export const collabWsUrl = url
 
-/** Deterministic room name per file, so a share link opens the same room. */
-export const roomIdForFile = (fileId: string) => `nb-file-${fileId}`
+/** Deterministic room per owner+file. Owner namespacing prevents cross-workspace room collisions. */
+export const roomIdForFile = (fileId: string, ownerUid: string | null | undefined) => `nb-file-${ownerUid || 'unknown'}__${fileId}`

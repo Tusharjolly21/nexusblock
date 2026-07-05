@@ -19,7 +19,7 @@ export type Profile = {
   stylePreference?: 'technical' | 'product' | 'minimal'
   plan?: 'free' | 'pro'
   gitRepoUrl?: string
-  apiTokens?: { id: string; name: string; token: string; createdAt: number }[]
+  apiTokens?: { id: string; name: string; prefix: string; tokenHash: string; createdAt: number }[]
   customIcons?: { id: string; name: string; dataUrl: string; createdAt: number }[]
   teamIconUrl?: string | null
   teamLogoUrl?: string | null
@@ -125,7 +125,7 @@ export const useApp = create<AppState>()(
       hydrateWorkspace: (data, ownerUid) =>
         set({
           onboarded: data.onboarded,
-          profile: data.profile,
+          profile: sanitizeProfile(data.profile),
           workspaceName: data.workspaceName || 'My workspace',
           files: data.files ?? [],
           folders: data.folders ?? [],
@@ -209,13 +209,23 @@ export const useApp = create<AppState>()(
       name: 'nexusblock-app',
       partialize: (s) => ({
         onboarded: s.onboarded,
-        profile: s.profile,
+        profile: sanitizeProfile(s.profile),
         workspaceName: s.workspaceName,
         // Shared files are held in memory only — don't persist them as owned.
         files: s.files.filter((f) => !f.sharedFrom),
         folders: s.folders,
         ownerUid: s.ownerUid,
       }),
+      merge: (persisted, current) => {
+        const data = persisted as Partial<AppState>
+        return {
+          ...current,
+          ...data,
+          profile: sanitizeProfile(data.profile ?? null),
+          files: data.files ?? current.files,
+          folders: data.folders ?? current.folders,
+        }
+      },
     },
   ),
 )
@@ -223,12 +233,38 @@ export const useApp = create<AppState>()(
 /** The cloud-synced slice of app state. */
 export const selectWorkspaceIndex = (s: AppState): WorkspaceIndex => ({
   onboarded: s.onboarded,
-  profile: s.profile,
+  profile: sanitizeProfileForCloud(s.profile),
   workspaceName: s.workspaceName,
   // Only the user's own files sync to their cloud workspace, never shared ones.
   files: s.files.filter((f) => !f.sharedFrom),
   folders: s.folders,
 })
+
+function sanitizeProfile(profile: Profile | null): Profile | null {
+  if (!profile) return null
+  const apiTokens = profile.apiTokens?.map((token) => {
+    const maybeLegacy = token as typeof token & { token?: string }
+    return {
+      id: token.id,
+      name: token.name,
+      prefix: token.prefix || (maybeLegacy.token ? `${maybeLegacy.token.slice(0, 7)}...${maybeLegacy.token.slice(-4)}` : 'nb_...'),
+      tokenHash: token.tokenHash || '',
+      createdAt: token.createdAt,
+    }
+  })
+  return { ...profile, apiTokens }
+}
+
+function sanitizeProfileForCloud(profile: Profile | null): Profile | null {
+  const clean = sanitizeProfile(profile)
+  if (!clean) return null
+  return {
+    ...clean,
+    customIcons: clean.customIcons?.map((icon) => ({ ...icon, dataUrl: icon.dataUrl.startsWith('data:') ? '' : icon.dataUrl })),
+    teamIconUrl: clean.teamIconUrl?.startsWith('data:') ? null : clean.teamIconUrl,
+    teamLogoUrl: clean.teamLogoUrl?.startsWith('data:') ? null : clean.teamLogoUrl,
+  }
+}
 
 function defaultTitle(template: TemplateId): string {
   switch (template) {

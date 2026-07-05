@@ -79,6 +79,8 @@ export function CanvasPane() {
   // Shared-file access: a file opened via a share link belongs to `sharedFrom`.
   // Viewers (role !== 'edit') are read-only and never write back to the cloud.
   const sharedFrom = file?.sharedFrom ?? null
+  const uid = useAuth((s) => s.uid)
+  const ownerUid = sharedFrom ?? uid
   const canEdit = !sharedFrom || file?.sharedRole === 'edit'
   const forcedReadOnly = !!sharedFrom && !canEdit
 
@@ -86,7 +88,7 @@ export function CanvasPane() {
   // Off = the normal local + Firestore-synced canvas, untouched.
   const [params] = useSearchParams()
   const live = params.get('live') === '1' && isCollabConfigured
-  const collabStore = useCollabStore(roomIdForFile(fileId), customShapeUtils, live)
+  const collabStore = useCollabStore(roomIdForFile(fileId, ownerUid), customShapeUtils, live)
   const liveReady = live && collabStore.status === 'synced-remote'
   const [showLiveToast, setShowLiveToast] = useState(false)
 

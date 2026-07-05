@@ -96,7 +96,15 @@ function cleanName(name: string) {
     .replace(/\b\w/g, (m) => m.toUpperCase()) || 'Custom icon'
 }
 
-function fileToDataUrl(file: File): Promise<string> {
+async function fileToDataUrl(file: File): Promise<string> {
+  if (file.type === 'image/svg+xml') {
+    const raw = await file.text()
+    const sanitized = raw
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
+      .replace(/\s(href|xlink:href)\s*=\s*(['"])\s*javascript:[\s\S]*?\2/gi, '')
+    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(sanitized)))}`
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))

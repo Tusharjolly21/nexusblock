@@ -1,3 +1,5 @@
+import { getFirebaseIdToken } from './authToken'
+
 /**
  * Client for the nexusblock AI server (natural language → diagram DSL).
  * The server holds the Claude API key; the browser only ever hits our endpoint.
@@ -10,9 +12,11 @@ export const isAiConfigured = !!url
 
 /** Ask Claude to write flow/ERD DSL for a description, optionally editing existing DSL. */
 export async function generateDsl(input: { kind: 'flow' | 'erd'; prompt: string; currentDsl?: string }): Promise<string> {
+  const token = await getFirebaseIdToken()
+  if (!token) throw new Error('Sign in again to use AI generation.')
   const res = await fetch(`${url}/generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(input),
   })
   if (!res.ok) {

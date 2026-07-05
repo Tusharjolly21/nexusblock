@@ -7,6 +7,7 @@ import { useAuth } from '../store/useAuth'
 import { useComments, loadLocalComments, saveLocalComments, type CommentThread } from '../store/useComments'
 import { cloudEnabled, pullContent, pushContent } from '../sync/cloud'
 import { isCollabConfigured, collabWsUrl, roomIdForFile } from '../lib/collab'
+import { useFirebaseIdToken } from '../lib/authToken'
 
 /**
  * Loads/persists the current file's comment threads (local + cloud) and, in a
@@ -17,12 +18,14 @@ export function CommentsSync() {
   const file = useApp(selectCurrentFile)
   const fileId = file?.id ?? 'scratch'
   const sharedFrom = file?.sharedFrom ?? null
-  const canComment = !!file && (!sharedFrom || file.sharedRole === 'edit' || file.sharedRole === 'view')
   const uid = useAuth((s) => s.uid)
+  const ownerUid = sharedFrom ?? uid
+  const canComment = !!file && (!sharedFrom || file.sharedRole === 'edit' || file.sharedRole === 'view')
   const setThreads = useComments((s) => s.setThreads)
   const threads = useComments((s) => s.threadsByFile[fileId] ?? [])
   const [params] = useSearchParams()
   const live = params.get('live') === '1' && isCollabConfigured
+  const liveToken = useFirebaseIdToken(live)
   const applyingRemoteRef = useRef(false)
 
   // Load local, then the owner's cloud copy.
@@ -53,11 +56,11 @@ export function CommentsSync() {
 
   // Live threads over Yjs.
   const commentsY = useMemo(() => {
-    if (!live) return null
+    if (!live || !liveToken) return null
     const doc = new Y.Doc()
-    const provider = new WebsocketProvider(collabWsUrl, `${roomIdForFile(fileId)}:comments`, doc)
+    const provider = new WebsocketProvider(collabWsUrl, `${roomIdForFile(fileId, ownerUid)}:comments`, doc, { params: { token: liveToken } })
     return { doc, provider, map: doc.getMap<CommentThread>('threads') }
-  }, [live, fileId])
+  }, [live, liveToken, fileId, ownerUid])
 
   useEffect(() => () => { commentsY?.provider.destroy(); commentsY?.doc.destroy() }, [commentsY])
 
