@@ -29,7 +29,7 @@ export function Landing() {
   const authed = useAuth((s) => s.authed)
   const startHref = authed ? '/app' : '/signup'
   return (
-    <div className="min-h-full overflow-x-hidden bg-paper text-ink">
+    <div className="min-h-full overflow-x-clip bg-paper text-ink">
       <LivingGrid />
       <div className="relative z-10">
         <LandingNav />
