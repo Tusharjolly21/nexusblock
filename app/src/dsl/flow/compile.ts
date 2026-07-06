@@ -108,6 +108,101 @@ export async function applyFlow(editor: Editor, source: string): Promise<FlowErr
   }
   collect(laid, 0, 0)
 
+  // Overwrite node positions if custom positions exist
+  for (const [name, n] of doc.nodes) {
+    if (n.pos) {
+      const parts = n.pos.trim().split(/\s+/)
+      const px = parseFloat(parts[0])
+      const py = parseFloat(parts[1])
+      if (!isNaN(px) && !isNaN(py)) {
+        const b = box.get(name)
+        if (b) {
+          b.x = px
+          b.y = py
+        } else {
+          const { w, h } = sizeFor(n.label, n.shape)
+          box.set(name, { x: px, y: py, w, h })
+        }
+      }
+    }
+  }
+
+  // Helper to compute group bounds from children coordinates recursively
+  const computeGroupBounds = (groupName: string): { x: number; y: number; w: number; h: number } => {
+    const g = doc.groups.get(groupName)
+    if (!g) return { x: 0, y: 0, w: 0, h: 0 }
+
+    const boundsList: { x: number; y: number; w: number; h: number }[] = []
+    for (const childName of g.children) {
+      if (doc.groups.has(childName)) {
+        boundsList.push(computeGroupBounds(childName))
+      } else {
+        const b = box.get(childName)
+        if (b) boundsList.push(b)
+      }
+    }
+
+    let explicitX: number | undefined
+    let explicitY: number | undefined
+    let explicitW: number | undefined
+    let explicitH: number | undefined
+
+    if (g.pos) {
+      const parts = g.pos.trim().split(/\s+/)
+      const px = parseFloat(parts[0])
+      const py = parseFloat(parts[1])
+      if (!isNaN(px) && !isNaN(py)) {
+        explicitX = px
+        explicitY = py
+      }
+    }
+    if (g.size) {
+      const parts = g.size.trim().split(/\s+/)
+      const pw = parseFloat(parts[0])
+      const ph = parseFloat(parts[1])
+      if (!isNaN(pw) && !isNaN(ph)) {
+        explicitW = pw
+        explicitH = ph
+      }
+    }
+
+    if (explicitX !== undefined && explicitY !== undefined && explicitW !== undefined && explicitH !== undefined) {
+      const result = { x: explicitX, y: explicitY, w: explicitW, h: explicitH }
+      box.set(groupName, result)
+      return result
+    }
+
+    if (boundsList.length === 0) {
+      const b = box.get(groupName) ?? { x: 0, y: 0, w: 320, h: 260 }
+      return b
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const b of boundsList) {
+      minX = Math.min(minX, b.x)
+      minY = Math.min(minY, b.y)
+      maxX = Math.max(maxX, b.x + b.w)
+      maxY = Math.max(maxY, b.y + b.h)
+    }
+
+    const topPad = 58, sidePad = 34
+    const calculated = {
+      x: explicitX !== undefined ? explicitX : minX - sidePad,
+      y: explicitY !== undefined ? explicitY : minY - topPad,
+      w: explicitW !== undefined ? explicitW : (maxX - minX) + sidePad * 2,
+      h: explicitH !== undefined ? explicitH : (maxY - minY) + topPad + sidePad,
+    }
+    box.set(groupName, calculated)
+    return calculated
+  }
+
+  // Resolve group bounds recursively starting from the top-level groups
+  for (const [name, g] of doc.groups) {
+    if (!g.parent) {
+      computeGroupBounds(name)
+    }
+  }
+
   // Replace the page.
   const existing = Array.from(editor.getCurrentPageShapeIds())
   if (existing.length) editor.deleteShapes(existing)
@@ -120,10 +215,12 @@ export async function applyFlow(editor: Editor, source: string): Promise<FlowErr
     return d
   }
   const groupNames = [...doc.groups.keys()].filter((n) => box.has(n)).sort((a, b) => depthOf(a) - depthOf(b))
+  const groupIds: TLShapeId[] = []
   for (const name of groupNames) {
     const g = doc.groups.get(name)!
     const b = box.get(name)!
-    createGroupFrame(editor, { x: b.x, y: b.y, w: b.w, h: b.h, label: g.label, accent: 'grey', tint: g.color ?? '' })
+    const id = createGroupFrame(editor, { x: b.x, y: b.y, w: b.w, h: b.h, label: g.label, accent: 'grey', tint: g.color ?? '' })
+    groupIds.push(id)
   }
 
   // Nodes.
@@ -143,6 +240,7 @@ export async function applyFlow(editor: Editor, source: string): Promise<FlowErr
   }
 
   // Connectors.
+  const arrowIds: TLShapeId[] = []
   for (const e of doc.edges) {
     const from = idMap.get(e.from)
     const to = idMap.get(e.to)
@@ -153,6 +251,7 @@ export async function applyFlow(editor: Editor, source: string): Promise<FlowErr
     const end = { x: b.x + b.w / 2, y: b.y + b.h / 2 }
     const spec = ARROW[e.connector]
     const arrowId = createShapeId()
+    arrowIds.push(arrowId)
     editor.createShape({
       id: arrowId,
       type: 'arrow',
@@ -180,6 +279,10 @@ export async function applyFlow(editor: Editor, source: string): Promise<FlowErr
     bind('start', from)
     bind('end', to)
   }
+
+  // Reorder Z-indices so group-frames are at the bottom, arrows in the middle, and nodes on top.
+  if (arrowIds.length) editor.sendToBack(arrowIds)
+  if (groupIds.length) editor.sendToBack(groupIds)
 
   editor.selectNone()
   editor.zoomToFit({ animation: { duration: 200 } })

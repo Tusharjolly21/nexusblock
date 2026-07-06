@@ -1,7 +1,7 @@
 import { isFlowShape, type FlowShape, type FlowConnector } from './lib'
 
-export type FlowNode = { name: string; label: string; shape: FlowShape; icon: string; color?: string; group?: string }
-export type FlowGroup = { name: string; label: string; color?: string; parent?: string; children: string[] }
+export type FlowNode = { name: string; label: string; shape: FlowShape; icon: string; color?: string; group?: string; pos?: string }
+export type FlowGroup = { name: string; label: string; color?: string; parent?: string; children: string[]; pos?: string; size?: string }
 export type FlowEdge = { from: string; to: string; label: string; connector: FlowConnector; color?: string }
 export type Direction = 'down' | 'up' | 'left' | 'right'
 export type FlowError = { line: number; message: string }
@@ -66,7 +66,7 @@ function splitTopLevel(text: string, sep: string): string[] {
   return out
 }
 
-type Props = { shape?: string; icon?: string; color?: string; label?: string }
+type Props = { shape?: string; icon?: string; color?: string; label?: string; pos?: string; size?: string }
 
 function parseProps(inner: string): Props {
   const props: Props = {}
@@ -75,7 +75,7 @@ function parseProps(inner: string): Props {
     if (idx === -1) continue
     const key = pair.slice(0, idx).trim().toLowerCase()
     const val = pair.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
-    if (key === 'shape' || key === 'icon' || key === 'color' || key === 'label') props[key] = val
+    if (key === 'shape' || key === 'icon' || key === 'color' || key === 'label' || key === 'pos' || key === 'size') props[key] = val
   }
   return props
 }
@@ -148,6 +148,7 @@ export function parseFlow(source: string): FlowDoc {
       if (isFlowShape(props.shape)) node.shape = props.shape
       else doc.errors.push({ line: 0, message: `Unknown shape “${props.shape}”.` })
     }
+    if (props.pos) node.pos = props.pos
     if (group) node.group = group
   }
 
@@ -177,6 +178,8 @@ export function parseFlow(source: string): FlowDoc {
           doc.groups.get(parsed.name) ?? { name: parsed.name, label: parsed.name, children: [] }
         if (parsed.props.label) g.label = parsed.props.label
         if (parsed.props.color) g.color = parsed.props.color
+        if (parsed.props.pos) g.pos = parsed.props.pos
+        if (parsed.props.size) g.size = parsed.props.size
         if (parent) g.parent = parent
         doc.groups.set(parsed.name, g)
         if (!doc.order.includes(parsed.name)) doc.order.push(parsed.name)

@@ -12,6 +12,8 @@ import { ToneToggle } from './ToneToggle'
 import { ViewModeSwitch } from './ViewModeSwitch'
 import { Logo } from './Logo'
 import { FOCUS_SHORTCUT_LABEL } from './FocusModeShortcut'
+import { createSlideFrame } from '../canvas/createNode'
+
 
 /** Editor top bar: workspace/back, editable file title, history + doc toggle. */
 export function TopBar() {
@@ -31,6 +33,32 @@ export function TopBar() {
   const shared = !!file?.sharedFrom
   const sharedViewOnly = shared && file?.sharedRole !== 'edit'
   const isLive = params.get('live') === '1'
+
+  const startPresenting = () => {
+    const editor = useDocStore.getState().editor
+    if (!editor) return
+    const slides = editor.getCurrentPageShapes().filter((s) => s.type === 'slide-frame')
+    let sortedSlideIds: string[] = []
+    if (slides.length === 0) {
+      const newSlideId = createSlideFrame(editor)
+      sortedSlideIds = [newSlideId]
+    } else {
+      const sorted = [...slides].sort((a, b) => {
+        const rowDiff = 120
+        if (Math.abs(a.y - b.y) > rowDiff) return a.y - b.y
+        return a.x - b.x
+      })
+      sortedSlideIds = sorted.map((s) => s.id)
+    }
+
+    const selectedId = editor.getSelectedShapeIds()[0]
+    const startIdx = selectedId && editor.getShape(selectedId)?.type === 'slide-frame'
+      ? sortedSlideIds.indexOf(selectedId)
+      : 0
+
+    useEditorUi.getState().startPresentation(sortedSlideIds, startIdx >= 0 ? startIdx : 0)
+  }
+
 
   return (
     <header className="relative z-40 grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-line bg-paper/90 px-3 backdrop-blur">
@@ -83,6 +111,11 @@ export function TopBar() {
           label={`Canvas focus (${FOCUS_SHORTCUT_LABEL})`}
           active={focusMode}
           onClick={toggleFocusMode}
+        />
+        <TopIconButton
+          icon="lucide:presentation"
+          label="Present slideshow"
+          onClick={startPresenting}
         />
         <div className="mx-1 h-6 w-px shrink-0 bg-line" />
         <ToneToggle />

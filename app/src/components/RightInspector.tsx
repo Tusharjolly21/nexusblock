@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
-import { renderPlaintextFromRichText, toRichText, type Editor, type TLShape } from 'tldraw'
+import { renderPlaintextFromRichText, toRichText, type Editor, type TLShape, DefaultColorStyle, DefaultFontStyle } from 'tldraw'
 import { useEditorUi, type InspectorTab } from '../store/useEditorUi'
 import { useDocStore } from '../store/useDocStore'
 import { useApp, selectCurrentFile } from '../store/useApp'
@@ -141,6 +141,7 @@ function StylePanel() {
   if (shape.type === 'flow-node') return <FlowNodeEditor editor={editor} shape={shape} />
   if (shape.type === 'erd-entity') return <ErdEntityEditor editor={editor} shape={shape} />
   if (shape.type === 'arrow') return <ArrowEditor editor={editor} shape={shape} />
+  if (shape.type === 'nb-3d-shape') return <ThreeDShapeEditor editor={editor} shape={shape} />
 
   return (
     <div className="space-y-5">
@@ -157,6 +158,7 @@ function StylePanel() {
           </div>
         </div>
       </PanelSection>
+      <ColorPickerSection editor={editor} shape={shape} />
       <QuickTips />
     </div>
   )
@@ -190,9 +192,11 @@ function ArchNodeEditor({ editor, shape }: { editor: Editor; shape: TLShape & { 
         <EditorCard icon={props.icon || 'lucide:server'} title={props.label || 'Service'} subtitle="Canvas changes can be pulled into Flow DSL." />
         <TextField label="Name" value={props.label || ''} onChange={(label) => update({ label })} />
         <TextField label="Technology label" value={props.tech || ''} onChange={(tech) => update({ tech })} placeholder="React, Kafka, Postgres..." />
-        <TextField label="Iconify logo" value={props.icon || ''} onChange={(icon) => update({ icon })} placeholder="logos:aws-lambda" />
+        <IconSearchField label="Iconify logo" value={props.icon || ''} onChange={(icon) => update({ icon })} />
         <SelectField label="Kind" value={props.kind || 'service'} options={[...NODE_KINDS]} onChange={(kind) => update({ kind })} />
       </PanelSection>
+      <ColorPickerSection editor={editor} shape={shape} />
+      <FontPickerSection editor={editor} shape={shape} />
       <QuickTips />
     </div>
   )
@@ -207,10 +211,12 @@ function FlowNodeEditor({ editor, shape }: { editor: Editor; shape: TLShape & { 
       <PanelSection title="Flow node">
         <EditorCard icon={props.icon || 'lucide:workflow'} title={props.label || 'Node'} subtitle="Change shape, icon, color, then Pull canvas to update code." />
         <TextField label="Name" value={props.label || ''} onChange={(label) => update({ label })} />
-        <TextField label="Icon" value={props.icon || ''} onChange={(icon) => update({ icon })} placeholder="shield-check or logos:postgresql" />
+        <IconSearchField label="Icon" value={props.icon || ''} onChange={(icon) => update({ icon })} />
         <TextField label="Color" value={props.color || ''} onChange={(color) => update({ color })} placeholder="blue, green, #22c55e" />
         <SelectField label="Shape" value={props.shape || 'rectangle'} options={[...FLOW_SHAPES]} onChange={(shape) => update({ shape })} />
       </PanelSection>
+      <ColorPickerSection editor={editor} shape={shape} />
+      <FontPickerSection editor={editor} shape={shape} />
       <QuickTips />
     </div>
   )
@@ -225,7 +231,7 @@ function ErdEntityEditor({ editor, shape }: { editor: Editor; shape: TLShape & {
     const rows = textToRows(text)
     update({
       rows: JSON.stringify(rows),
-      h: 42 + rows.length * 34,
+      h: 42 + 8 + rows.length * 28,
     })
   }
 
@@ -234,10 +240,12 @@ function ErdEntityEditor({ editor, shape }: { editor: Editor; shape: TLShape & {
       <PanelSection title="ERD table">
         <EditorCard icon={String(props.icon || 'lucide:table-2')} title={String(props.name || 'Entity')} subtitle="Each row becomes an entity field in ERD code." />
         <TextField label="Entity name" value={String(props.name || '')} onChange={(name) => update({ name })} />
-        <TextField label="Icon" value={String(props.icon || '')} onChange={(icon) => update({ icon })} placeholder="database, users, credit-card" />
+        <IconSearchField label="Icon" value={String(props.icon || '')} onChange={(icon) => update({ icon })} />
         <TextField label="Color" value={String(props.color || '')} onChange={(color) => update({ color })} placeholder="blue, orange, green" />
         <TextareaField label="Fields" value={rowsText} onChange={updateRows} placeholder={'id uuid pk\ncustomerId uuid\nstatus varchar'} />
       </PanelSection>
+      <ColorPickerSection editor={editor} shape={shape} />
+      <FontPickerSection editor={editor} shape={shape} />
       <QuickTips />
     </div>
   )
@@ -257,6 +265,8 @@ function ArrowEditor({ editor, shape }: { editor: Editor; shape: TLShape & { typ
         <SelectField label="End head" value={String(props.arrowheadEnd || 'arrow')} options={['none', 'arrow', 'dot', 'bar', 'diamond']} onChange={(arrowheadEnd) => update({ arrowheadEnd })} />
         <SelectField label="Line style" value={String(props.dash || 'draw')} options={['draw', 'solid', 'dashed', 'dotted']} onChange={(dash) => update({ dash })} />
       </PanelSection>
+      <ColorPickerSection editor={editor} shape={shape} />
+      <FontPickerSection editor={editor} shape={shape} />
       <QuickTips />
     </div>
   )
@@ -624,7 +634,7 @@ function Comment({ thread, onFly, onToggle, onDelete }: { thread: CommentThread;
           {thread.status}
         </button>
       </div>
-      <p className="text-sm leading-relaxed text-grey-4">{thread.body}</p>
+      <p className="text-sm leading-relaxed text-ink">{renderCommentBody(thread.body)}</p>
       <div className="mt-3 flex items-center justify-between text-[11px] text-grey-3">
         <span className="truncate">{formatCommentAuthor(thread.author)}</span>
         <button onClick={onDelete} className="rounded-lg px-2 py-1 hover:bg-grey-1 hover:text-ink">
@@ -633,6 +643,20 @@ function Comment({ thread, onFly, onToggle, onDelete }: { thread: CommentThread;
       </div>
     </div>
   )
+}
+
+function renderCommentBody(text: string) {
+  const parts = text.split(/(@\w+)/)
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      return (
+        <span key={i} className="inline-block px-1.5 py-0.5 rounded bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 font-semibold text-xs border border-blue-500/10 dark:border-blue-400/10 mx-0.5 animate-pulse">
+          {part}
+        </span>
+      )
+    }
+    return part
+  })
 }
 
 const COMMENT_EMOJIS = ['👍', '✅', '👀', '🔥', '💡', '🚀', '❤️', '🙏']
@@ -659,3 +683,364 @@ function displayCommentAuthor(profileName?: string | null, authName?: string | n
 function formatCommentAuthor(author: string) {
   return author.includes('@') ? author.split('@')[0] : author
 }
+
+function ToggleField({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="mt-3 flex items-center justify-between cursor-pointer">
+      <span className="text-xs font-semibold text-grey-4">{label}</span>
+      <input
+        type="checkbox"
+        checked={value}
+        onChange={(e) => onChange(e.currentTarget.checked)}
+        className="h-4 w-4 rounded border-line bg-surface text-ink outline-none transition-colors"
+      />
+    </label>
+  )
+}
+
+function RangeField({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  suffix = '',
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (value: number) => void
+  suffix?: string
+}) {
+  return (
+    <label className="mt-3 block">
+      <div className="mb-1 flex justify-between text-xs font-semibold text-grey-4">
+        <span>{label}</span>
+        <span className="font-mono text-grey-3">{value}{suffix}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.currentTarget.value))}
+        className="w-full h-1.5 bg-line rounded-lg appearance-none cursor-pointer accent-ink"
+      />
+    </label>
+  )
+}
+
+function ThreeDShapeEditor({ editor, shape }: { editor: Editor; shape: TLShape }) {
+  const props = shape.props as any
+  const update = (patch: any) => editor.updateShape({ id: shape.id, type: 'nb-3d-shape', props: patch })
+
+  return (
+    <div className="space-y-5">
+      <PanelSection title="3D Canvas Shape">
+        <EditorCard icon="lucide:box" title="3D Shape Utility" subtitle="Custom glassmorphic 3D rendering engine" />
+        <SelectField
+          label="Shape Type"
+          value={props.shapeType || 'cube'}
+          options={['cube', 'pyramid', 'cylinder', 'prism', 'sphere', 'cone']}
+          onChange={(shapeType) => update({ shapeType })}
+        />
+        <SelectField
+          label="Pastel Color Theme"
+          value={props.color || 'blue'}
+          options={['blue', 'green', 'orange', 'purple', 'red', 'yellow', 'pink']}
+          onChange={(color) => update({ color })}
+        />
+        <ToggleField
+          label="Slow Auto-Spin Animation"
+          value={props.spinning !== false}
+          onChange={(spinning) => update({ spinning })}
+        />
+        
+        {props.spinning !== false ? (
+          <RangeField
+            label="Spin Speed Duration"
+            value={props.spinSpeed ?? 10}
+            min={2}
+            max={30}
+            step={1}
+            suffix="s"
+            onChange={(spinSpeed) => update({ spinSpeed })}
+          />
+        ) : (
+          <>
+            <RangeField
+              label="Rotation X Angle"
+              value={props.rotationX ?? -20}
+              min={-180}
+              max={180}
+              step={5}
+              suffix="°"
+              onChange={(rotationX) => update({ rotationX })}
+            />
+            <RangeField
+              label="Rotation Y Angle"
+              value={props.rotationY ?? 45}
+              min={-180}
+              max={180}
+              step={5}
+              suffix="°"
+              onChange={(rotationY) => update({ rotationY })}
+            />
+          </>
+        )}
+
+        <RangeField
+          label="Glass Opacity"
+          value={props.opacity ?? 0.25}
+          min={0.05}
+          max={0.9}
+          step={0.05}
+          onChange={(opacity) => update({ opacity })}
+        />
+        <RangeField
+          label="Border Outline Width"
+          value={props.borderWidth ?? 1.5}
+          min={0.5}
+          max={6}
+          step={0.5}
+          suffix="px"
+          onChange={(borderWidth) => update({ borderWidth })}
+        />
+      </PanelSection>
+    </div>
+  )
+}
+
+const COLOR_PALETTE = [
+  { label: 'Default', hex: '', tldraw: 'black' },
+  { label: 'Red', hex: '#ef4444', tldraw: 'red' },
+  { label: 'Orange', hex: '#f97316', tldraw: 'orange' },
+  { label: 'Amber', hex: '#f59e0b', tldraw: 'yellow' },
+  { label: 'Green', hex: '#10b981', tldraw: 'green' },
+  { label: 'Blue', hex: '#3b82f6', tldraw: 'blue' },
+  { label: 'Purple', hex: '#8b5cf6', tldraw: 'purple' },
+  { label: 'Pink', hex: '#ec4899', tldraw: 'pink' },
+  { label: 'Grey', hex: '#64748b', tldraw: 'grey' },
+]
+
+function ColorPickerSection({ editor, shape }: { editor: Editor; shape: TLShape }) {
+  const isCustom = ['flow-node', 'erd-entity', 'icon', 'nb-3d-shape'].includes(shape.type)
+  const currentVal = isCustom
+    ? (shape.props as any).color || ''
+    : editor.getSharedStyles().get(DefaultColorStyle) || 'black'
+
+  const handleSelectColor = (colorItem: typeof COLOR_PALETTE[number]) => {
+    if (isCustom) {
+      const val = colorItem.hex
+      editor.updateShape({
+        id: shape.id,
+        type: shape.type,
+        props: { ...shape.props, color: val },
+      } as any)
+    } else {
+      editor.setStyleForSelectedShapes(DefaultColorStyle, colorItem.tldraw as any)
+    }
+  }
+
+  return (
+    <PanelSection title="Color Styling">
+      <div className="grid grid-cols-5 gap-2 rounded-2xl border border-line bg-paper p-3">
+        {COLOR_PALETTE.map((c) => {
+          const isSelected = isCustom
+            ? currentVal === c.hex || (c.hex === '' && !currentVal)
+            : currentVal === c.tldraw
+
+          return (
+            <button
+              key={c.label}
+              onClick={() => handleSelectColor(c)}
+              title={c.label}
+              className={
+                'h-8 w-8 rounded-full border transition-all ' +
+                (isSelected ? 'ring-2 ring-ink ring-offset-2 scale-110' : 'border-line hover:scale-105')
+              }
+              style={{
+                backgroundColor: c.hex || '#18181b',
+              }}
+            />
+          )
+        })}
+      </div>
+    </PanelSection>
+  )
+}
+
+const FONT_OPTIONS = [
+  { label: 'Inherit Default', value: '' },
+  { label: 'Inter', value: 'Inter' },
+  { label: 'Outfit', value: 'Outfit' },
+  { label: 'Roboto', value: 'Roboto' },
+  { label: 'JetBrains Mono', value: 'JetBrains Mono' },
+  { label: 'Playfair Display', value: 'Playfair Display' },
+  { label: 'Instrument Sans', value: 'Instrument Sans' },
+]
+
+function FontPickerSection({ editor, shape }: { editor: Editor; shape: TLShape }) {
+  const isCustom = ['arch-node', 'flow-node', 'erd-entity', 'icon'].includes(shape.type)
+  const currentVal = isCustom ? (shape.props as any).fontFamily || '' : ''
+
+  const handleSelectFont = (fontVal: string) => {
+    if (isCustom) {
+      editor.updateShape({
+        id: shape.id,
+        type: shape.type,
+        props: { ...shape.props, fontFamily: fontVal },
+      } as any)
+    } else {
+      let tldrawFont: 'sans' | 'serif' | 'mono' | 'draw' = 'sans'
+      if (fontVal === 'JetBrains Mono') tldrawFont = 'mono'
+      if (fontVal === 'Playfair Display') tldrawFont = 'serif'
+      editor.setStyleForSelectedShapes(DefaultFontStyle, tldrawFont)
+    }
+  }
+
+  return (
+    <PanelSection title="Font Override">
+      <div className="rounded-2xl border border-line bg-paper p-3">
+        <label className="block text-[10px] font-bold text-grey-4 uppercase tracking-wider mb-2">Select Font Family</label>
+        <select
+          value={currentVal}
+          onChange={(e) => handleSelectFont(e.target.value)}
+          className="w-full h-9 rounded-xl border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-ink cursor-pointer font-semibold"
+        >
+          {FONT_OPTIONS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </PanelSection>
+  )
+}
+
+function IconSearchField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (val: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [results, setResults] = useState<string[]>([])
+  const [searching, setSearching] = useState(false)
+
+  const triggerSearch = async (q: string) => {
+    if (!q.trim()) return
+    setSearching(true)
+    try {
+      const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=48`)
+      const data = await res.json()
+      setResults(data.icons || [])
+    } catch (err) {
+      console.error('Failed to search icons:', err)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      triggerSearch(searchQuery)
+    }, 300)
+    return () => clearTimeout(delay)
+  }, [searchQuery])
+
+  return (
+    <div className="space-y-1.5 relative">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] font-bold text-grey-4 uppercase tracking-wider">{label}</label>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(!open)
+            setSearchQuery(value.includes(':') ? value.split(':')[1] : value)
+          }}
+          className="text-[10px] font-semibold text-sky-500 hover:text-sky-600 flex items-center gap-1 transition-colors"
+        >
+          <Icon icon="lucide:globe" width={11} />
+          Search Online
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <div className="flex-1 flex h-9 items-center gap-2 rounded-xl border border-line bg-surface px-3">
+          {value ? (
+            <Icon icon={value} width={16} className="text-ink" />
+          ) : (
+            <Icon icon="lucide:image" width={16} className="text-grey-3" />
+          )}
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-xs text-ink outline-none placeholder:text-grey-3 font-medium"
+            placeholder="logos:aws-lambda or database"
+          />
+        </div>
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-2xl border border-line bg-paper p-3.5 shadow-2xl animate-fade-in space-y-3.5 w-72">
+          <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5">
+            <Icon icon="lucide:search" width={12} className="text-grey-3" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search e.g. apache kafka, redis..."
+              className="flex-1 bg-transparent text-xs outline-none text-ink font-semibold"
+              autoFocus
+            />
+            {searching && <Icon icon="lucide:loader-2" className="animate-spin text-grey-3" width={12} />}
+          </div>
+
+          <div className="max-h-48 overflow-y-auto no-scrollbar border-t border-line/45 pt-2">
+            {results.length === 0 ? (
+              <p className="text-[10px] text-grey-3 text-center py-4 font-semibold">No icons found. Type to search.</p>
+            ) : (
+              <div className="grid grid-cols-5 gap-2">
+                {results.map((icon) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => {
+                      onChange(icon)
+                      setOpen(false)
+                    }}
+                    title={icon}
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface text-ink hover:border-sky-500 hover:text-sky-500 transition-all hover:scale-105"
+                  >
+                    <Icon icon={icon} width={20} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-line/60">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-xl px-3 py-1 text-[10px] font-bold bg-ink text-paper hover:opacity-90 transition-opacity"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+

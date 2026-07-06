@@ -23,9 +23,10 @@ export type IconShapeProps = {
   label: string
   /** Tint for monochrome (lucide) icons; '' = default ink. Ignored by logos. */
   color: string
+  fontFamily: string
 }
 
-const Versions = createShapePropsMigrationIds('icon', { AddColor: 1 })
+const Versions = createShapePropsMigrationIds('icon', { AddColor: 1, AddFontFamily: 2 })
 
 const iconMigrations = createShapePropsMigrationSequence({
   sequence: [
@@ -34,6 +35,14 @@ const iconMigrations = createShapePropsMigrationSequence({
       up: (props) => ({ ...props, color: '' }),
       down: (props) => {
         const { color: _color, ...rest } = props as IconShapeProps
+        return rest
+      },
+    },
+    {
+      id: Versions.AddFontFamily,
+      up: (props) => ({ ...props, fontFamily: '' }),
+      down: (props) => {
+        const { fontFamily: _fontFamily, ...rest } = props as IconShapeProps
         return rest
       },
     },
@@ -62,12 +71,13 @@ export class IconShapeUtil extends BaseBoxShapeUtil<IconShape> {
     icon: T.string,
     label: T.string,
     color: T.string,
+    fontFamily: T.string,
   }
 
   static override migrations = iconMigrations
 
   override getDefaultProps(): IconShapeProps {
-    return { w: 56, h: 56, icon: 'logos:aws', label: '', color: '' }
+    return { w: 56, h: 56, icon: 'logos:aws', label: '', color: '', fontFamily: '' }
   }
 
   override canResize = () => true
@@ -85,7 +95,7 @@ export class IconShapeUtil extends BaseBoxShapeUtil<IconShape> {
   }
 
   component(shape: IconShape) {
-    const { w, h, icon, label, color } = shape.props
+    const { w, h, icon, label, color, fontFamily } = shape.props
     const size = Math.min(w, h)
     return (
       <HTMLContainer
@@ -124,7 +134,7 @@ export class IconShapeUtil extends BaseBoxShapeUtil<IconShape> {
               left: '50%',
               transform: 'translateX(-50%)',
               marginTop: 4,
-              fontFamily: "'Instrument Sans', sans-serif",
+              fontFamily: fontFamily || "var(--font-sans)",
               fontSize: 11,
               fontWeight: 600,
               color: 'var(--color-ink)',

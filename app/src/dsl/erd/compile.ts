@@ -70,12 +70,27 @@ export async function applyErd(editor: Editor, source: string): Promise<ErdError
   for (const [name, e] of doc.entities) {
     const b = box.get(name)
     if (!b) continue
+
+    let entityX = b.x
+    let entityY = b.y
+    if (e.pos) {
+      const parts = e.pos.trim().split(/\s+/)
+      const px = parseFloat(parts[0])
+      const py = parseFloat(parts[1])
+      if (!isNaN(px) && !isNaN(py)) {
+        entityX = px
+        entityY = py
+        b.x = entityX
+        b.y = entityY
+      }
+    }
+
     const id = createShapeId()
     editor.createShape({
       id,
       type: 'erd-entity',
-      x: b.x,
-      y: b.y,
+      x: entityX,
+      y: entityY,
       props: {
         w: b.w,
         h: b.h,
@@ -97,6 +112,7 @@ export async function applyErd(editor: Editor, source: string): Promise<ErdError
   }
 
   // Relationships.
+  const arrowIds: TLShapeId[] = []
   for (const r of doc.rels) {
     const fromId = idMap.get(r.from.entity)
     const toId = idMap.get(r.to.entity)
@@ -114,6 +130,7 @@ export async function applyErd(editor: Editor, source: string): Promise<ErdError
     const end = { x: tb.x + tnx * tb.w, y: tb.y + tny * tb.h }
 
     const arrowId = createShapeId()
+    arrowIds.push(arrowId)
     editor.createShape({
       id: arrowId,
       type: 'arrow',
@@ -143,6 +160,7 @@ export async function applyErd(editor: Editor, source: string): Promise<ErdError
     const [fromCard, toCard] = CARD[r.connector]
     const mkCard = (text: string, at: { x: number; y: number }, right: boolean) => {
       const id = createShapeId()
+      arrowIds.push(id)
       editor.createShape({
         id,
         type: 'text',
@@ -154,6 +172,9 @@ export async function applyErd(editor: Editor, source: string): Promise<ErdError
     mkCard(fromCard, start, fnx === 1)
     mkCard(toCard, end, tnx === 1)
   }
+
+  // Send relationship lines and cardinality text behind entity tables
+  if (arrowIds.length) editor.sendToBack(arrowIds)
 
   editor.selectNone()
   editor.zoomToFit({ animation: { duration: 200 } })

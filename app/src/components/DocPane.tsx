@@ -107,6 +107,46 @@ export function DocPane() {
   const canvasEditor = useDocStore((s) => s.editor)
   const tone = useTheme((s) => s.tone)
   const bridgeRef = useRef(useDocStore.getState().docBridge)
+  const setHighlightedShapeId = useEditorUi((s) => s.setHighlightedShapeId)
+
+  const handleMouseOver = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    const text = (target.innerText || target.textContent || '').trim()
+    if (!text || text.length > 80) {
+      setHighlightedShapeId(null)
+      return
+    }
+
+    const tldr = useDocStore.getState().editor
+    if (!tldr) return
+
+    const shapes = tldr.getCurrentPageShapes()
+    const candidates: { id: string; label: string }[] = []
+
+    for (const shape of shapes) {
+      let label = ''
+      if (shape.props && typeof shape.props === 'object') {
+        const p = shape.props as any
+        label = p.label || p.name || p.text || ''
+      }
+      label = label.trim()
+      if (label.length >= 2) {
+        candidates.push({ id: shape.id, label })
+      }
+    }
+
+    // Sort by length desc so we match longer names first
+    candidates.sort((a, b) => b.label.length - a.label.length)
+
+    for (const c of candidates) {
+      if (text.toLowerCase().includes(c.label.toLowerCase())) {
+        setHighlightedShapeId(c.id)
+        return
+      }
+    }
+
+    setHighlightedShapeId(null)
+  }
 
   // Expose Markdown + HTML export to the top bar while this pane is mounted.
   useEffect(() => {
@@ -407,7 +447,12 @@ export function DocPane() {
   }
 
   return (
-    <div className="h-full overflow-y-auto py-4" onPasteCapture={handlePaste}>
+    <div
+      className="h-full overflow-y-auto py-4"
+      onPasteCapture={handlePaste}
+      onMouseOver={handleMouseOver}
+      onMouseLeave={() => setHighlightedShapeId(null)}
+    >
       <BlockNoteView editor={editor} editable={canEdit} theme={isDarkTone(tone) ? 'dark' : 'light'} onChange={persist} slashMenu={false}>
         <SuggestionMenuController
           triggerCharacter="/"

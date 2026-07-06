@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '@iconify/react'
 import { useDocStore } from '../store/useDocStore'
+import { useEditorUi } from '../store/useEditorUi'
 import { useApp, selectCurrentFile } from '../store/useApp'
 import { useAuth } from '../store/useAuth'
 import { cloudEnabled, pullContent, pushContent } from '../sync/cloud'
@@ -13,6 +15,7 @@ export function VersionMenu() {
   const uid = useAuth((s) => s.uid)
   const ownerUid = file?.sharedFrom ?? uid
   const canEdit = !file?.sharedFrom || file.sharedRole === 'edit'
+  const setDiffVersion = useEditorUi((s) => s.setDiffVersion)
   const [open, setOpen] = useState(false)
   const [versions, setVersions] = useState<DocVersion[]>([])
   const ref = useRef<HTMLDivElement>(null)
@@ -79,22 +82,39 @@ export function VersionMenu() {
               <p className="px-1 py-2 text-xs text-grey-3">No snapshots yet.</p>
             ) : (
               versions.map((v) => (
-                <button
+                <div
                   key={v.id}
-                  onClick={() => editor && restoreVersion(editor, v)}
-                  title={`Restore ${v.label}`}
-                  className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left transition-colors hover:bg-grey-1"
+                  className="group flex w-full items-center justify-between rounded-lg px-2 py-1.5 hover:bg-grey-1"
                 >
-                  <span className="text-sm font-medium text-grey-4">{v.label}</span>
-                  <span className="font-mono text-[10px] text-grey-3">
-                    {new Date(v.createdAt).toLocaleString([], {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </button>
+                  <button
+                    onClick={() => {
+                      if (editor) restoreVersion(editor, v)
+                      setOpen(false)
+                    }}
+                    title={`Restore ${v.label}`}
+                    className="flex flex-1 flex-col text-left outline-none"
+                  >
+                    <span className="text-sm font-medium text-grey-4">{v.label}</span>
+                    <span className="font-mono text-[9px] text-grey-3">
+                      {new Date(v.createdAt).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDiffVersion(v)
+                      setOpen(false)
+                    }}
+                    title={`Compare active canvas with ${v.label}`}
+                    className="ml-2 hidden h-7 w-7 place-items-center rounded-lg border border-line bg-surface text-grey-4 hover:border-ink hover:text-ink group-hover:grid"
+                  >
+                    <Icon icon="lucide:git-compare-arrows" width={14} />
+                  </button>
+                </div>
               ))
             )}
           </div>

@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Icon } from '@iconify/react'
-import { react, createShapeId, type Editor, type TLShape, type TLShapeId } from 'tldraw'
+import { react, createShapeId, type Editor, type TLShape, type TLShapeId, GeoShapeGeoStyle } from 'tldraw'
 import { useDocStore } from '../store/useDocStore'
 import { CONNECTOR_STYLE, styleConnector, connectorProps } from '../canvas/createNode'
 import { useEditorUi } from '../store/useEditorUi'
 
-/** Shape types that expose hover-to-connect handles. `geo` = every geometric
- * shape (rectangle, ellipse, diamond, triangle, hexagon, star, …). */
-const CONNECTABLE = new Set(['arch-node', 'icon', 'geo', 'note', 'device-frame', 'flow-node', 'erd-entity', 'code-block'])
+/** Shape types that expose hover-to-connect handles. */
+const CONNECTABLE = new Set(['arch-node', 'icon', 'geo', 'note', 'device-frame', 'flow-node', 'erd-entity', 'code-block', 'group-frame', 'nb-3d-shape'])
 /** Large / resizable shapes: show handles on hover only, so they don't collide
  * with tldraw's resize handles while selected. */
-const HOVER_ONLY = new Set(['device-frame', 'code-block'])
+const HOVER_ONLY = new Set(['device-frame', 'code-block', 'group-frame'])
 
 type Side = 'top' | 'right' | 'bottom' | 'left'
-const SIDES: Side[] = ['top', 'right', 'bottom', 'left']
 const SIDE_ANCHOR: Record<Side, { x: number; y: number }> = {
   top: { x: 0.5, y: 0 },
   right: { x: 1, y: 0.5 },
@@ -55,19 +52,6 @@ const posFor = (b: Bounds, side: Side) => {
       return { x: b.x, y: b.y + b.h / 2 }
   }
 }
-const handlePosFor = (b: Bounds, side: Side, offset: number) => {
-  const p = posFor(b, side)
-  switch (side) {
-    case 'top':
-      return { x: p.x, y: p.y - offset }
-    case 'right':
-      return { x: p.x + offset, y: p.y }
-    case 'bottom':
-      return { x: p.x, y: p.y + offset }
-    case 'left':
-      return { x: p.x - offset, y: p.y }
-  }
-}
 const boundsOf = (editor: Editor, shape: TLShape): Bounds | null => {
   const b = editor.getShapePageBounds(shape.id)
   return b ? { id: shape.id, x: b.x, y: b.y, w: b.width, h: b.height } : null
@@ -78,7 +62,9 @@ const isConnectableShape = (shape: TLShape | undefined | null) =>
 const inInflatedBounds = (b: Bounds, p: { x: number; y: number }, margin: number) =>
   p.x >= b.x - margin && p.x <= b.x + b.w + margin && p.y >= b.y - margin && p.y <= b.y + b.h + margin
 
-const canUseConnectHandles = (editor: Editor) => !useEditorUi.getState().readOnly && editor.getCurrentToolId() === 'select' && editor.isIn('select.idle')
+const canUseConnectHandles = (editor: Editor) =>
+  !useEditorUi.getState().readOnly &&
+  (editor.getCurrentToolId() === 'arrow' || editor.getCurrentToolId() === 'line')
 
 const dragConnectorProps = (shiftKey: boolean, span = 0) =>
   shiftKey ? { kind: 'arc' as const, bend: 0 } : connectorProps(useEditorUi.getState().connectorStyle, span)
@@ -115,10 +101,38 @@ const sideForDrop = (b: Bounds, p: { x: number; y: number }): Side => {
   return 'bottom'
 }
 
+/** Computes the closest point on the rectangular boundary of the shape. */
+const closestPointOnBoundary = (b: Bounds, p: { x: number; y: number }) => {
+  const cx = Math.max(b.x, Math.min(b.x + b.w, p.x))
+  const cy = Math.max(b.y, Math.min(b.y + b.h, p.y))
+
+  const dLeft = cx - b.x
+  const dRight = b.x + b.w - cx
+  const dTop = cy - b.y
+  const dBottom = b.y + b.h - cy
+  const min = Math.min(dLeft, dRight, dTop, dBottom)
+
+  if (min === dLeft) return { x: b.x, y: cy, side: 'left' as const }
+  if (min === dRight) return { x: b.x + b.w, y: cy, side: 'right' as const }
+  if (min === dTop) return { x: cx, y: b.y, side: 'top' as const }
+  return { x: cx, y: b.y + b.h, side: 'bottom' as const }
+}
+
+/** Checks if the pointer coordinates are within a threshold distance of any of the shape corners. */
+const isNearCorner = (b: Bounds, p: { x: number; y: number }, threshold: number) => {
+  const corners = [
+    { x: b.x, y: b.y },
+    { x: b.x + b.w, y: b.y },
+    { x: b.x, y: b.y + b.h },
+    { x: b.x + b.w, y: b.y + b.h },
+  ]
+  return corners.some((c) => Math.hypot(p.x - c.x, p.y - c.y) < threshold)
+}
+
 /**
- * Eraser-style hover-to-connect (screen-space overlay). Hover any connectable
- * shape → 4 edge dots; drag from a dot → an arrow that exits that side and routes
- * neatly to the side you drop on; a dashed guide + snap appears when aligned.
+ * Eraser-style sliding quick connection handles. Hover or select any shape →
+ * blue selection outline and single sliding dot handle. Click and drag from ANY
+ * perimeter location to draw a line.
  */
 export function ConnectionHandles() {
   const editor = useDocStore((s) => s.editor)
@@ -128,6 +142,7 @@ export function ConnectionHandles() {
   const [canShowHandles, setCanShowHandles] = useState(false)
   const [cam, setCam] = useState<Cam>({ x: 0, y: 0, z: 1 })
   const [drag, setDrag] = useState<DragState | null>(null)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [alignGuides, setAlignGuides] = useState<Guide[]>([])
   const dragRef = useRef<DragState | null>(null)
   const activeHandleRef = useRef<ActiveHandle>(null)
@@ -168,6 +183,12 @@ export function ConnectionHandles() {
         props: { terminal: 'end', normalizedAnchor: SIDE_ANCHOR[targetSide], isExact: false, isPrecise: true, snap: 'none' },
       })
       styleConnector(editor, arrowId, useEditorUi.getState().connectorStyle, span)
+
+      // Send arrow behind nodes but keep in front of group frames
+      editor.sendToBack([arrowId])
+      const groups = editor.getCurrentPageShapesSorted().filter((s) => s.type === 'group-frame').map((s) => s.id)
+      if (groups.length) editor.sendToBack(groups)
+
       return arrowId
     },
     [editor],
@@ -210,14 +231,12 @@ export function ConnectionHandles() {
     })
   }, [editor])
 
-  // Keep custom blue guide overlays disabled; native shape movement remains clean
-  // without drawing long rails across the canvas.
+  // Keep custom blue guide overlays disabled.
   useEffect(() => {
     setAlignGuides([])
   }, [])
 
-  // Selected single shapes should expose the same connection affordance as hover.
-  // This makes the "I selected this, now connect it" flow feel deliberate.
+  // Selected single shapes should expose the same connection outline as hover.
   useEffect(() => {
     if (!editor) return
     return react('drawdocs-selected-connectable', () => {
@@ -244,39 +263,36 @@ export function ConnectionHandles() {
     })
   }, [editor])
 
-  // Hover via getShapeAtPoint(hitInside) so unfilled geo shapes count everywhere.
+  // Global mouse tracking to avoid event blocking
   useEffect(() => {
     if (!editor) return
-    const el = editor.getContainer()
-    let lastId: TLShapeId | null = null
-    const update = (clientX: number, clientY: number) => {
+    const onMove = (e: PointerEvent) => {
+      const p = editor.screenToPage({ x: e.clientX, y: e.clientY })
+      setCursorPos(p)
+
       if (dragRef.current || !canUseConnectHandles(editor)) {
         if (!dragRef.current) setHover(null)
         return
       }
-      const p = editor.screenToPage({ x: clientX, y: clientY })
-      // Margin keeps the shape "hovered" as the cursor reaches its edge dots,
-      // so they don't flicker away right when you try to grab one.
+
       const hit = findConnectableTarget(p, null, 34 / Math.max(0.2, editor.getCamera().z))
       const id = hit ? hit.id : null
-      if (id === lastId) return
-      lastId = id
       if (id) {
         const b = editor.getShapePageBounds(id)
         setHover(b ? { id, x: b.x, y: b.y, w: b.width, h: b.height } : null)
-      } else if (!activeHandleRef.current) setHover(null)
+      } else {
+        setHover(null)
+      }
     }
-    const onMove = (e: PointerEvent) => update(e.clientX, e.clientY)
     const onLeave = () => {
-      if (dragRef.current) return
-      lastId = null
-      if (!activeHandleRef.current) setHover(null)
+      setCursorPos(null)
+      if (!dragRef.current) setHover(null)
     }
-    el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerleave', onLeave)
+    window.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerleave', onLeave)
     return () => {
-      el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerleave', onLeave)
+      window.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerleave', onLeave)
     }
   }, [editor, findConnectableTarget])
 
@@ -287,15 +303,20 @@ export function ConnectionHandles() {
     return { x: screen.x - rect.left, y: screen.y - rect.top }
   }
 
-  const startConnect = (e: React.PointerEvent, side: Side, sourceBounds: Bounds) => {
+  const startConnect = (e: React.PointerEvent, sourceBounds: Bounds, startPt: { x: number; y: number }, side: Side) => {
     if (!editor || !sourceBounds.id) return
     e.preventDefault()
     e.stopPropagation()
     const sourceId = sourceBounds.id
     const source = sourceBounds
-    const start = posFor(source, side)
+    const start = startPt
     const sc = center(source)
     const snapTol = 8 / (cam.z || 1)
+
+    const anchor = {
+      x: source.w === 0 ? 0.5 : Math.max(0, Math.min(1, (start.x - source.x) / source.w)),
+      y: source.h === 0 ? 0.5 : Math.max(0, Math.min(1, (start.y - source.y) / source.h)),
+    }
 
     editor.markHistoryStoppingPoint('create connector')
     const arrowId = createShapeId()
@@ -307,12 +328,17 @@ export function ConnectionHandles() {
       y: start.y,
       props: { start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, ...CONNECTOR_STYLE, ...initialLine },
     })
-    // Bind the start to the exact side the user grabbed (so it exits that side).
+
+    // Send arrow behind nodes but keep in front of group frames
+    editor.sendToBack([arrowId])
+    const groups = editor.getCurrentPageShapesSorted().filter((s) => s.type === 'group-frame').map((s) => s.id)
+    if (groups.length) editor.sendToBack(groups)
+
     editor.createBinding({
       type: 'arrow',
       fromId: arrowId,
       toId: sourceId,
-      props: { terminal: 'start', normalizedAnchor: SIDE_ANCHOR[side], isExact: false, isPrecise: true, snap: 'none' },
+      props: { terminal: 'start', normalizedAnchor: anchor, isExact: false, isPrecise: true, snap: 'none' },
     })
     setDrag({ arrowId, sourceId, start, source, target: null, targetSide: null, targetPoint: null, pointer: start })
 
@@ -326,7 +352,7 @@ export function ConnectionHandles() {
       editor.setHintingShapes(hovered ? [hovered.id] : [])
       const tb = hovered ? editor.getShapePageBounds(hovered.id) : null
       const target = tb ? { id: hovered!.id, x: tb.x, y: tb.y, w: tb.width, h: tb.height } : null
-      const targetPoint = target ? clampPointToBounds(target, ev.shiftKey ? routed : p) : null
+      const targetPoint = target ? closestPointOnBoundary(target, ev.shiftKey ? routed : p) : null
       const end = targetPoint ?? routed
       const span = Math.hypot(end.x - start.x, end.y - start.y) || 160
       editor.updateShape({
@@ -374,8 +400,6 @@ export function ConnectionHandles() {
         if (!ev.shiftKey) styleConnector(editor, arrowId, useEditorUi.getState().connectorStyle, span)
         editor.select(arrowId)
       } else {
-        // Dropped on empty canvas: keep a real free-ended connector. Only
-        // cancel tiny accidental drags that end back on the source handle.
         const routed = ev.shiftKey ? axisLockedPoint(start, p, side) : p
         const span = Math.hypot(routed.x - start.x, routed.y - start.y)
         if (span < 18 / Math.max(0.2, editor.getCamera().z)) {
@@ -465,18 +489,22 @@ export function ConnectionHandles() {
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [editor, growConnectedShape, hover, selected])
+}, [editor, growConnectedShape, hover, selected])
 
   if (!editor) return null
 
-  // Which shapes get dots: while dragging, keep the source side affordances quiet
-  // and draw the drop target separately as a ghost/plus preview.
-  const dotSets: { bounds: Bounds; interactive: boolean; opacity: number }[] = []
-  if (drag) {
-    dotSets.push({ bounds: drag.source, interactive: false, opacity: 0.24 })
-  } else if (canShowHandles && (hover ?? selected)) {
-    dotSets.push({ bounds: hover ?? selected!, interactive: true, opacity: 1 })
-  }
+  const activeBounds = hover || (cursorPos ? null : selected)
+  const nearCorner = activeBounds && cursorPos
+    ? isNearCorner(activeBounds, cursorPos, 22 / (cam.z || 1))
+    : false
+
+  const activeTool = editor.getCurrentToolId()
+  const isDrawingShape = new Set(['geo', 'note', 'text', 'frame']).has(activeTool) &&
+    (editor.isIn('geo.idle') || editor.isIn('note.idle') || editor.isIn('text.idle') || editor.isIn('frame.idle'))
+
+  const slidingDot = activeBounds && cursorPos && canShowHandles && !drag && !nearCorner
+    ? closestPointOnBoundary(activeBounds, cursorPos)
+    : null
 
   const guides: React.ReactNode[] = []
   for (const guide of alignGuides) {
@@ -502,6 +530,7 @@ export function ConnectionHandles() {
       )
     }
   }
+
   const targetPreview = drag?.target
     ? (() => {
         const tl = toLayer({ x: drag.target.x, y: drag.target.y })
@@ -545,66 +574,139 @@ export function ConnectionHandles() {
     <div className="pointer-events-none absolute inset-0 z-10">
       {guides}
       {targetPreview}
-      {dotSets.map((set, i) =>
-        SIDES.map((side) => {
-          const z = Math.max(0.2, cam.z || 1)
-          const size = set.interactive ? 22 : 10
-          const dotRadius = size / 2
-          // Keep a clear gap between the shape edge and the handle so the "+"
-          // never crowds the shape's border or a full-bleed icon inside it.
-          // Smaller shapes get proportionally more room, so the four handles
-          // stay legible and separated instead of colliding with the content.
-          const minSideScreen = Math.min(set.bounds.w, set.bounds.h) * z
-          const baseGap = set.interactive ? 12 : 6
-          const smallBoost = set.interactive ? Math.max(0, (72 - minSideScreen) * 0.16) : 0
-          const offset = (dotRadius + baseGap + smallBoost) / z
-          const s = toLayer(handlePosFor(set.bounds, side, offset))
-          return (
-            <div
-              key={`${i}-${side}`}
-              onPointerEnter={
-                set.interactive
-                  ? () => {
-                      setActiveHandle({ bounds: set.bounds, side })
-                      lastHandleRef.current = { bounds: set.bounds, side }
-                      setHover(set.bounds)
-                    }
-                  : undefined
-              }
-              onPointerLeave={set.interactive ? () => setActiveHandle(null) : undefined}
-              onPointerDown={set.interactive ? (e) => startConnect(e, side, set.bounds) : undefined}
-              className="group grid place-items-center"
+
+      {/* Selected/Hovered Shape outline box (Blue selected border) */}
+      {activeBounds && canShowHandles && !drag && (() => {
+        const tl = toLayer({ x: activeBounds.x, y: activeBounds.y })
+        const br = toLayer({ x: activeBounds.x + activeBounds.w, y: activeBounds.y + activeBounds.h })
+        return (
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              left: tl.x - 2,
+              top: tl.y - 2,
+              width: br.x - tl.x + 4,
+              height: br.y - tl.y + 4,
+              border: `2px solid ${CONNECTOR_BLUE}`,
+              borderRadius: 14,
+              boxShadow: `0 0 0 3px rgba(28, 165, 255, 0.15)`,
+            }}
+          />
+        )
+      })()}
+
+      {/* Boundary dragging zone (hollow SVG outline) */}
+      {activeBounds && canShowHandles && !drag && (() => {
+        const tl = toLayer({ x: activeBounds.x, y: activeBounds.y })
+        const br = toLayer({ x: activeBounds.x + activeBounds.w, y: activeBounds.y + activeBounds.h })
+        const w = br.x - tl.x
+        const h = br.y - tl.y
+        return (
+          <svg
+            style={{
+              position: 'absolute',
+              left: tl.x - 12,
+              top: tl.y - 12,
+              width: w + 24,
+              height: h + 24,
+              overflow: 'visible',
+              pointerEvents: 'none',
+              zIndex: 25,
+            }}
+          >
+            <rect
+              x={12}
+              y={12}
+              width={w}
+              height={h}
+              rx={12}
+              ry={12}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={16}
               style={{
-                position: 'absolute',
-                left: s.x,
-                top: s.y,
-                width: size,
-                height: size,
-                opacity: set.opacity,
-                transform: 'translate(-50%, -50%)',
-                borderRadius: 999,
-                color: CONNECTOR_BLUE,
-                background: set.interactive ? 'var(--color-surface)' : CONNECTOR_BLUE,
-                border: set.interactive ? `1px solid ${CONNECTOR_BLUE_BORDER}` : '0',
-                boxShadow: set.interactive ? '0 5px 16px rgba(15, 23, 42, 0.10)' : 'none',
-                cursor: set.interactive ? 'crosshair' : 'default',
-                pointerEvents: set.interactive ? 'all' : 'none',
-                transition: 'opacity 120ms ease, transform 120ms ease, box-shadow 120ms ease',
+                pointerEvents: nearCorner ? 'none' : 'stroke',
+                cursor: nearCorner ? 'default' : 'crosshair',
               }}
-            >
-              {set.interactive ? (
-                <>
-                  <Icon icon="lucide:plus" width={12} height={12} />
-                  <span className="pointer-events-none absolute bottom-[calc(100%+9px)] left-1/2 z-30 w-max -translate-x-1/2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-left text-[11px] font-medium leading-tight text-ink opacity-0 shadow-[0_16px_34px_-20px_rgba(0,0,0,.45)] transition-opacity duration-150 group-hover:opacity-100">
-                    <span className="block whitespace-nowrap">Drag to connect</span>
-                    <span className="block whitespace-nowrap font-mono text-[10px] text-grey-3">Cmd/Ctrl + Arrow duplicates</span>
-                  </span>
-                </>
-              ) : null}
-            </div>
-          )
-        }),
-      )}
+              onPointerDown={(e) => {
+                if (nearCorner) return
+                const p = editor.screenToPage({ x: e.clientX, y: e.clientY })
+                const bp = closestPointOnBoundary(activeBounds, p)
+                startConnect(e, activeBounds, { x: bp.x, y: bp.y }, bp.side)
+              }}
+            />
+          </svg>
+        )
+      })()}
+
+      {/* Sliding Blue Handle Dot (tracks cursor along boundary) */}
+      {slidingDot && activeBounds && (() => {
+        const s = toLayer({ x: slidingDot.x, y: slidingDot.y })
+        const size = 12
+        return (
+          <div
+            onPointerDown={(e) => startConnect(e, activeBounds, { x: slidingDot.x, y: slidingDot.y }, slidingDot.side)}
+            className="absolute grid place-items-center cursor-crosshair hover:scale-125 transition-transform"
+            style={{
+              left: s.x,
+              top: s.y,
+              width: size,
+              height: size,
+              transform: 'translate(-50%, -50%)',
+              borderRadius: 999,
+              background: CONNECTOR_BLUE,
+              border: `2.5px solid var(--color-surface)`,
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.35)',
+              pointerEvents: 'all',
+              zIndex: 30,
+            }}
+          />
+        )
+      })()}
+
+      {/* Shadow shape preview overlay centered on cursor before clicking/dragging */}
+      {isDrawingShape && cursorPos && (() => {
+        const cp = toLayer(cursorPos)
+        const z = cam.z || 1
+        const w = 120 * z
+        const h = 100 * z
+        const x = cp.x
+        const y = cp.y
+
+        let currentGeo = 'rectangle'
+        try {
+          currentGeo = editor.getStyleForNextShape(GeoShapeGeoStyle) || 'rectangle'
+        } catch {}
+
+        const stroke = 'rgba(28, 165, 255, 0.55)'
+        const fill = 'rgba(28, 165, 255, 0.05)'
+        const strokeDasharray = '5 5'
+
+        return (
+          <svg
+            style={{
+              position: 'absolute',
+              left: x,
+              top: y,
+              width: w,
+              height: h,
+              pointerEvents: 'none',
+              overflow: 'visible',
+              zIndex: 5,
+            }}
+          >
+            {activeTool === 'geo' && currentGeo === 'ellipse' ? (
+              <ellipse cx={w / 2} cy={h / 2} rx={w / 2} ry={h / 2} fill={fill} stroke={stroke} strokeWidth={2} strokeDasharray={strokeDasharray} />
+            ) : activeTool === 'geo' && currentGeo === 'triangle' ? (
+              <polygon points={`${w / 2},0 0,${h} ${w},${h}`} fill={fill} stroke={stroke} strokeWidth={2} strokeDasharray={strokeDasharray} />
+            ) : activeTool === 'geo' && currentGeo === 'diamond' ? (
+              <polygon points={`${w / 2},0 0,${h / 2} ${w / 2},${h} ${w},${h / 2}`} fill={fill} stroke={stroke} strokeWidth={2} strokeDasharray={strokeDasharray} />
+            ) : (
+              <rect x={0} y={0} width={w} height={h} rx={activeTool === 'note' ? 4 : 8} fill={fill} stroke={stroke} strokeWidth={2} strokeDasharray={strokeDasharray} />
+            )}
+          </svg>
+        )
+      })()}
     </div>
   )
 }

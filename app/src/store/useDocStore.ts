@@ -82,7 +82,7 @@ export type DocBridge = {
   getActiveDocBlock: () => { id: string; text: string } | null
 }
 
-export type FlyoutKind = 'insert' | 'search' | 'snapshots' | 'layers' | 'shapes' | 'icons' | 'catalog' | null
+export type FlyoutKind = 'insert' | 'search' | 'snapshots' | 'layers' | 'shapes' | 'icons' | 'catalog' | 'ai' | 'dsa' | null
 
 /**
  * Single-player app state (Phase 1). Multiplayer presence/selection will move

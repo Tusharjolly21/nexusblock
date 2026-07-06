@@ -39,7 +39,7 @@ export function PageBar() {
   }
 
   return (
-    <div className="pointer-events-auto absolute bottom-3 left-14 z-20 flex max-w-[52vw] items-center gap-1 overflow-x-auto rounded-xl border border-line bg-surface/95 p-1 shadow-[0_12px_30px_-14px_rgba(0,0,0,.3)] backdrop-blur">
+    <div className="pointer-events-auto absolute bottom-4 left-14 z-20 flex max-w-[52vw] items-center gap-1 overflow-x-auto rounded-xl border border-line bg-surface/95 p-1 shadow-[0_12px_30px_-14px_rgba(0,0,0,.3)] backdrop-blur">
       <Icon icon="lucide:files" width={14} className="ml-1 mr-0.5 shrink-0 text-grey-3" />
       {pages.map((p) =>
         editing === p.id ? (

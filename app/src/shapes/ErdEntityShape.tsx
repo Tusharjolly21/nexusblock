@@ -1,13 +1,15 @@
 import { Icon } from '@iconify/react'
 import {
   BaseBoxShapeUtil,
+  createShapePropsMigrationIds,
+  createShapePropsMigrationSequence,
   HTMLContainer,
   Rectangle2d,
   T,
   type RecordProps,
   type TLBaseShape,
 } from 'tldraw'
-import { resolveColor, pastelFill } from '../dsl/flow/lib'
+import { resolveColor } from '../dsl/flow/lib'
 
 export const ERD_HEADER_H = 42
 export const ERD_ROW_H = 34
@@ -23,7 +25,23 @@ export type ErdEntityProps = {
   color: string
   /** JSON string of ErdRow[]. */
   rows: string
+  fontFamily: string
 }
+
+const Versions = createShapePropsMigrationIds('erd-entity', { AddFontFamily: 1 })
+
+const migrations = createShapePropsMigrationSequence({
+  sequence: [
+    {
+      id: Versions.AddFontFamily,
+      up: (props) => ({ ...props, fontFamily: '' }),
+      down: (props) => {
+        const { fontFamily: _fontFamily, ...rest } = props as ErdEntityProps
+        return rest
+      },
+    },
+  ],
+})
 
 declare module '@tldraw/tlschema' {
   interface TLGlobalShapePropsMap {
@@ -45,6 +63,8 @@ function parseRows(json: string): ErdRow[] {
 export class ErdEntityShapeUtil extends BaseBoxShapeUtil<ErdEntityShape> {
   static override type = 'erd-entity' as const
 
+  static override migrations = migrations
+
   static override props: RecordProps<ErdEntityShape> = {
     w: T.number,
     h: T.number,
@@ -52,10 +72,11 @@ export class ErdEntityShapeUtil extends BaseBoxShapeUtil<ErdEntityShape> {
     icon: T.string,
     color: T.string,
     rows: T.string,
+    fontFamily: T.string,
   }
 
   override getDefaultProps(): ErdEntityProps {
-    return { w: 220, h: ERD_HEADER_H, name: 'Entity', icon: '', color: '', rows: '[]' }
+    return { w: 220, h: ERD_HEADER_H, name: 'Entity', icon: '', color: '', rows: '[]', fontFamily: '' }
   }
 
   override canResize = () => false
@@ -65,26 +86,28 @@ export class ErdEntityShapeUtil extends BaseBoxShapeUtil<ErdEntityShape> {
   }
 
   component(shape: ErdEntityShape) {
-    const { w, name, icon, color } = shape.props
+    const { w, name, icon, color, fontFamily } = shape.props
     const rows = parseRows(shape.props.rows)
     const accent = resolveColor(color)
     const border = accent ?? 'var(--color-line)'
-    const headerBg = accent ? pastelFill(accent) : 'var(--color-grey-1)'
-    const typeColor = accent ?? 'var(--color-grey-3)'
+    const headerBg = 'rgba(255,255,255, 0.01)'
+    const typeColor = 'var(--color-grey-3)'
 
     return (
       <HTMLContainer
         style={{
           width: w,
           height: shape.props.h,
-          borderRadius: 12,
-          border: `1.5px solid ${border}`,
+          borderRadius: 10,
+          border: `1px solid ${border}`,
           background: 'var(--color-surface)',
           overflow: 'hidden',
-          boxShadow: '0 1px 2px rgba(0,0,0,.05), 0 10px 24px -16px rgba(0,0,0,.3)',
-          fontFamily: "'Instrument Sans', sans-serif",
+          boxShadow: '0 4px 24px -10px rgba(0,0,0,.25)',
+          fontFamily: fontFamily || "var(--font-sans)",
           pointerEvents: 'all',
           boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* header */}
@@ -93,39 +116,59 @@ export class ErdEntityShapeUtil extends BaseBoxShapeUtil<ErdEntityShape> {
             height: ERD_HEADER_H,
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'between',
             gap: 8,
             padding: '0 12px',
             background: headerBg,
             borderBottom: `1px solid ${border}`,
+            flexShrink: 0,
           }}
         >
-          <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--color-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
-          {icon && <Icon icon={icon} width={16} height={16} style={{ color: accent ?? 'var(--color-grey-4)' }} />}
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--color-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {name}
+          </span>
+          {icon && (
+            <Icon
+              icon={icon}
+              width={14}
+              height={14}
+              style={{ color: accent ?? 'var(--color-grey-3)', opacity: 0.8 }}
+            />
+          )}
         </div>
 
         {/* rows */}
-        {rows.map((r, i) => (
-          <div
-            key={`${r.name}-${i}`}
-            style={{
-              height: ERD_ROW_H,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '0 12px',
-              borderTop: i === 0 ? 'none' : '1px solid var(--color-line)',
-              fontSize: 13,
-            }}
-          >
-            <span style={{ flex: 1, color: 'var(--color-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
-            {r.type && (
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: typeColor }}>{r.type}</span>
-            )}
-            {r.pk && (
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700, color: '#f5820e' }}>pk</span>
-            )}
-          </div>
-        ))}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '4px 0' }}>
+          {rows.map((r, i) => (
+            <div
+              key={`${r.name}-${i}`}
+              style={{
+                height: 28, // compact row height like Eraser
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 12px',
+                fontSize: 12,
+              }}
+            >
+              <span style={{ color: 'var(--color-ink)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {r.name}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {r.type && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: typeColor }}>
+                    {r.type}
+                  </span>
+                )}
+                {r.pk && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, color: '#f59e0b', textTransform: 'lowercase' }}>
+                    pk
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </HTMLContainer>
     )
   }

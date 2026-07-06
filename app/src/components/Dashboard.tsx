@@ -629,12 +629,97 @@ function MembersSettings({ context, inviteUrl, copied, copy }: { context: Dashbo
             className={'relative h-6 w-11 rounded-full transition-colors ' + (inviteLinkEnabled ? 'bg-[rgb(39,106,221)]' : 'bg-grey-2')}
             aria-label="Toggle invite link"
           >
-            <span className={'absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ' + (inviteLinkEnabled ? 'translate-x-6' : 'translate-x-1')} />
+            <span className={'absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform ' + (inviteLinkEnabled ? 'translate-x-5' : 'translate-x-0')} />
           </button>
         </div>
         <div className="mt-6 flex items-center gap-3 text-sm text-grey-3">
           <span className="min-w-0 flex-1 truncate">{inviteLinkEnabled ? inviteUrl : 'Invite link disabled'}</span>
           <button disabled={!inviteLinkEnabled} onClick={() => copy('Invite link', inviteUrl)} className="shrink-0 font-semibold text-sky-500 hover:underline disabled:cursor-not-allowed disabled:text-grey-3">{copied === 'Invite link' ? 'Copied' : 'Copy link'}</button>
+        </div>
+      </section>
+      <section className="mt-7 rounded-2xl border border-line bg-paper p-7">
+        <h3 className="font-display text-lg font-semibold">Workspace Branding (White-Label)</h3>
+        <p className="mt-1 text-xs text-grey-3">Customize Nexusblock style colors, grid, and typography for embeds, presentations, and dashboards.</p>
+        
+        <div className="mt-6 space-y-5">
+          {/* Brand Primary Color */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <span className="text-sm font-semibold block">Primary Brand Color</span>
+              <span className="text-xs text-grey-3">Color used for links, buttons, and system accent marks.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={context.profile?.brandPrimaryColor || '#276add'}
+                onChange={(e) => updateProfile({ brandPrimaryColor: e.target.value })}
+                className="h-8 w-8 cursor-pointer rounded-lg border border-line bg-transparent p-0"
+              />
+              <input
+                type="text"
+                value={context.profile?.brandPrimaryColor || '#276add'}
+                onChange={(e) => updateProfile({ brandPrimaryColor: e.target.value })}
+                placeholder="#276add"
+                className="w-24 rounded-lg border border-line bg-paper px-2.5 py-1 text-xs font-mono text-ink outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Grid Dot Color */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <span className="text-sm font-semibold block">Canvas Grid Dot Color</span>
+              <span className="text-xs text-grey-3">Color applied to tldraw background grid dots.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={context.profile?.brandCanvasDotColor || '#e8e4db'}
+                onChange={(e) => updateProfile({ brandCanvasDotColor: e.target.value })}
+                className="h-8 w-8 cursor-pointer rounded-lg border border-line bg-transparent p-0"
+              />
+              <input
+                type="text"
+                value={context.profile?.brandCanvasDotColor || '#e8e4db'}
+                onChange={(e) => updateProfile({ brandCanvasDotColor: e.target.value })}
+                placeholder="#e8e4db"
+                className="w-24 rounded-lg border border-line bg-paper px-2.5 py-1 text-xs font-mono text-ink outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Custom Font Family */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <span className="text-sm font-semibold block">Typography Font Family</span>
+              <span className="text-xs text-grey-3">The typeface family applied to editor views and canvas labels.</span>
+            </div>
+            <select
+              value={context.profile?.brandFontFamily || 'Inter'}
+              onChange={(e) => updateProfile({ brandFontFamily: e.target.value })}
+              className="rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none"
+            >
+              <option value="Inter">Inter (Sans-Serif)</option>
+              <option value="Roboto">Roboto (Clean)</option>
+              <option value="Outfit">Outfit (Premium UI)</option>
+              <option value="JetBrains Mono">JetBrains Mono (Technical)</option>
+              <option value="Playfair Display">Playfair Display (Academic)</option>
+            </select>
+          </div>
+
+          {/* Reset Options */}
+          <div className="pt-2 border-t border-line/60 flex justify-end">
+            <button
+              onClick={() => updateProfile({
+                brandPrimaryColor: undefined,
+                brandCanvasDotColor: undefined,
+                brandFontFamily: undefined
+              })}
+              className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-grey-4 hover:border-ink hover:text-ink"
+            >
+              Reset to default style
+            </button>
+          </div>
         </div>
       </section>
     </div>

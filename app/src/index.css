@@ -149,3 +149,12 @@ body {
   animation: nbHeadingFlash 1.2s ease-out;
   border-radius: 6px;
 }
+
+/* Reposition tldraw's native bottom-left zoom controls to the bottom-right */
+.tlui-navigation-panel,
+[data-testid="focus-button"],
+.tl-navigation-panel {
+  left: auto !important;
+  right: 16px !important;
+  bottom: 16px !important;
+}

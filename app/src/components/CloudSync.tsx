@@ -23,6 +23,7 @@ export function CloudSync() {
     if (!uid || !cloudEnabled()) {
       ready.current = false
       syncedUid.current = null
+      useApp.getState().setCloudSyncReady(true)
       return
     }
     if (syncedUid.current === uid) return
@@ -53,7 +54,10 @@ export function CloudSync() {
         // eslint-disable-next-line no-console
         console.warn('[cloud] workspace reconcile failed:', e)
       } finally {
-        if (!cancelled) ready.current = true
+        if (!cancelled) {
+          ready.current = true
+          useApp.getState().setCloudSyncReady(true)
+        }
       }
     })()
 

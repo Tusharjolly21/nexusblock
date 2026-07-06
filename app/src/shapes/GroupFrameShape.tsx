@@ -35,9 +35,10 @@ export type GroupFrameProps = {
   tint: string
   /** Title-tab scale (font + padding). 1 = default. */
   labelScale: number
+  fontFamily: string
 }
 
-const Versions = createShapePropsMigrationIds('group-frame', { AddTint: 1, AddLabelScale: 2 })
+const Versions = createShapePropsMigrationIds('group-frame', { AddTint: 1, AddLabelScale: 2, AddFontFamily: 3 })
 
 const migrations = createShapePropsMigrationSequence({
   sequence: [
@@ -54,6 +55,14 @@ const migrations = createShapePropsMigrationSequence({
       up: (props) => ({ ...props, labelScale: 1 }),
       down: (props) => {
         const { labelScale: _s, ...rest } = props as GroupFrameProps
+        return rest
+      },
+    },
+    {
+      id: Versions.AddFontFamily,
+      up: (props) => ({ ...props, fontFamily: '' }),
+      down: (props) => {
+        const { fontFamily: _fontFamily, ...rest } = props as GroupFrameProps
         return rest
       },
     },
@@ -83,12 +92,13 @@ export class GroupFrameShapeUtil extends BaseBoxShapeUtil<GroupFrameShape> {
     accent: T.literalEnum(...GROUP_ACCENTS),
     tint: T.string,
     labelScale: T.number,
+    fontFamily: T.string,
   }
 
   static override migrations = migrations
 
   override getDefaultProps(): GroupFrameProps {
-    return { w: 320, h: 260, label: 'Group', accent: 'amber', tint: '', labelScale: 1 }
+    return { w: 320, h: 260, label: 'Group', accent: 'amber', tint: '', labelScale: 1, fontFamily: '' }
   }
 
   override canResize = () => true
@@ -110,7 +120,7 @@ export class GroupFrameShapeUtil extends BaseBoxShapeUtil<GroupFrameShape> {
   }
 
   component(shape: GroupFrameShape) {
-    const { w, h, label } = shape.props
+    const { w, h, label, fontFamily } = shape.props
     const tint = resolveColor(shape.props.tint)
     const a = tint ? { border: tint, fill: pastelFill(tint), title: tint } : ACCENT[shape.props.accent]
     const editing = this.editor.getEditingShapeId() === shape.id
@@ -125,7 +135,7 @@ export class GroupFrameShapeUtil extends BaseBoxShapeUtil<GroupFrameShape> {
       border: `1px solid ${a.border}`,
       background: 'var(--color-paper)',
       color: a.title,
-      fontFamily: "'Instrument Sans', sans-serif",
+      fontFamily: fontFamily || "var(--font-sans)",
       fontSize: 11 * scale,
       fontWeight: 700,
       letterSpacing: '.04em',

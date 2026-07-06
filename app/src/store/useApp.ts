@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { TemplateId } from '../onboarding/templates'
+import { applyBrandStyle } from './useTheme'
 
 export type Role = 'engineer' | 'pm' | 'designer' | 'other'
 export type TeamKind = 'solo' | 'team'
@@ -23,6 +24,9 @@ export type Profile = {
   customIcons?: { id: string; name: string; dataUrl: string; createdAt: number }[]
   teamIconUrl?: string | null
   teamLogoUrl?: string | null
+  brandPrimaryColor?: string
+  brandCanvasDotColor?: string
+  brandFontFamily?: string
   defaultLinkAccess?: 'restricted' | 'view' | 'edit'
   allowedInviteDomains?: string[]
 }
@@ -91,6 +95,10 @@ type AppState = {
   renameFolder: (id: string, name: string) => void
   deleteFolder: (id: string) => void
   setCurrentFile: (id: string | null) => void
+  _hasHydrated: boolean
+  setHasHydrated: (state: boolean) => void
+  cloudSyncReady: boolean
+  setCloudSyncReady: (state: boolean) => void
 }
 
 const uid = () => crypto.randomUUID()
@@ -106,12 +114,26 @@ export const useApp = create<AppState>()(
       folders: [],
       currentFileId: null,
       ownerUid: null,
+      _hasHydrated: false,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
+      cloudSyncReady: false,
+      setCloudSyncReady: (state) => set({ cloudSyncReady: state }),
 
       completeOnboarding: (profile, workspaceName) =>
-        set({ onboarded: true, profile, workspaceName: workspaceName || 'My workspace' }),
+          set({ onboarded: true, profile, workspaceName: workspaceName || 'My workspace' }),
 
       updateProfile: (profile) =>
-        set((s) => ({ profile: s.profile ? { ...s.profile, ...profile } : null })),
+        set((s) => {
+          const nextProfile = s.profile ? { ...s.profile, ...profile } : null
+          if (nextProfile) {
+            applyBrandStyle(
+              nextProfile.brandPrimaryColor,
+              nextProfile.brandCanvasDotColor,
+              nextProfile.brandFontFamily
+            )
+          }
+          return { profile: nextProfile }
+        }),
 
       setWorkspaceName: (name) =>
         set((s) => {
@@ -123,17 +145,30 @@ export const useApp = create<AppState>()(
         }),
 
       hydrateWorkspace: (data, ownerUid) =>
-        set({
-          onboarded: data.onboarded,
-          profile: sanitizeProfile(data.profile),
-          workspaceName: data.workspaceName || 'My workspace',
-          files: data.files ?? [],
-          folders: data.folders ?? [],
-          ownerUid,
+        set((s) => {
+          const remoteFiles = data.files ?? []
+          const remoteIds = new Set(remoteFiles.map((f) => f.id))
+          const localOnlyFiles = s.files.filter((f) => !f.sharedFrom && !remoteIds.has(f.id))
+          const mergedFiles = [...remoteFiles, ...localOnlyFiles]
+
+          const remoteFolders = data.folders ?? []
+          const remoteFolderIds = new Set(remoteFolders.map((f) => f.id))
+          const localOnlyFolders = s.folders.filter((f) => !remoteFolderIds.has(f.id))
+          const mergedFolders = [...remoteFolders, ...localOnlyFolders]
+
+          return {
+            onboarded: data.onboarded,
+            profile: sanitizeProfile(data.profile),
+            workspaceName: data.workspaceName || 'My workspace',
+            files: mergedFiles,
+            folders: mergedFolders,
+            ownerUid,
+            cloudSyncReady: true,
+          }
         }),
 
       resetWorkspace: (ownerUid) =>
-        set({ onboarded: false, profile: null, workspaceName: 'My workspace', files: [], folders: [], currentFileId: null, ownerUid }),
+        set({ onboarded: false, profile: null, workspaceName: 'My workspace', files: [], folders: [], currentFileId: null, ownerUid, cloudSyncReady: true }),
 
       setOwner: (ownerUid) => set({ ownerUid }),
 
@@ -224,6 +259,16 @@ export const useApp = create<AppState>()(
           profile: sanitizeProfile(data.profile ?? null),
           files: data.files ?? current.files,
           folders: data.folders ?? current.folders,
+        }
+      },
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+        if (state?.profile) {
+          applyBrandStyle(
+            state.profile.brandPrimaryColor,
+            state.profile.brandCanvasDotColor,
+            state.profile.brandFontFamily
+          )
         }
       },
     },

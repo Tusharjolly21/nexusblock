@@ -232,6 +232,28 @@ export function createEmbed(editor: Editor, opts: { point?: VecLike; url: string
   return id
 }
 
+export function createSlideFrame(editor: Editor, point?: VecLike) {
+  const w = 800
+  const h = 500
+  const topLeft = point ?? centeredTopLeft(editor, w, h)
+  const id = createShapeId()
+  editor.markHistoryStoppingPoint('create slide frame')
+  editor.createShape({
+    id,
+    type: 'slide-frame',
+    x: topLeft.x,
+    y: topLeft.y,
+    props: {
+      w,
+      h,
+      label: 'Slide Title',
+    },
+  })
+  editor.select(id)
+  return id
+}
+
+
 /** Top-left so a w×h box is centered in the current viewport. */
 function centeredTopLeft(editor: Editor, w = NODE_W, h = NODE_H): VecLike {
   const c = editor.getViewportPageBounds().center

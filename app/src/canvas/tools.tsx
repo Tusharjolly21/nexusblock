@@ -2,12 +2,16 @@ import { GeoShapeGeoStyle, type Editor } from 'tldraw'
 
 /** Set a tldraw tool by id (select/hand/draw/line/arrow/text/note/frame/…). */
 export function setTool(editor: Editor | null, id: string) {
-  editor?.setCurrentTool(id)
+  if (!editor) return
+  const isArrowOrLine = id === 'arrow' || id === 'line'
+  editor.updateInstanceState({ isToolLocked: isArrowOrLine })
+  editor.setCurrentTool(id)
 }
 
 /** Pick a specific geo shape, then activate the geo tool to draw it. */
 export function setGeoShape(editor: Editor | null, geo: string) {
   if (!editor) return
+  editor.updateInstanceState({ isToolLocked: false })
   editor.setStyleForNextShapes(GeoShapeGeoStyle, geo as never)
   editor.setCurrentTool('geo')
 }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDocStore } from '../store/useDocStore'
 import { useApp, selectCurrentFile } from '../store/useApp'
-import { exportImage, exportPdf, exportMarkdown, exportDocHtml, exportDocPdf } from '../canvas/exporters'
+import { useEditorUi } from '../store/useEditorUi'
+import { exportImage, exportPdf, exportMarkdown, exportDocHtml, exportDocPdf, exportAnimatedHtml, exportSlidesPdf } from '../canvas/exporters'
 import { LoadingAnimation } from './LoadingAnimation'
 
 /** Export popover: canvas → PNG/SVG/PDF, doc → Markdown. */
@@ -11,6 +12,7 @@ export function ExportMenu() {
   const ref = useRef<HTMLDivElement>(null)
   const file = useApp(selectCurrentFile)
   const title = file?.title ?? 'nexusblock'
+  const flowStyle = useEditorUi((s) => s.flowAnimationStyle)
 
   useEffect(() => {
     if (!open) return
@@ -54,6 +56,12 @@ export function ExportMenu() {
           </Item>
           <Item disabled={busy} onClick={() => run(async () => { const e = canvas(); if (e) await exportPdf(e, title) })}>
             PDF document
+          </Item>
+          <Item disabled={busy} onClick={() => run(async () => { const e = canvas(); if (e) await exportAnimatedHtml(e, title, flowStyle) })}>
+            Animated HTML (.html)
+          </Item>
+          <Item disabled={busy} onClick={() => run(async () => { const e = canvas(); if (e) await exportSlidesPdf(e, title) })}>
+            Presentation slides (.pdf)
           </Item>
           <Group label="Document" />
           <Item

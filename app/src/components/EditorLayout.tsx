@@ -3,6 +3,7 @@ import { EditorShell } from './EditorShell'
 import { DocView } from './DocView'
 import { RightInspector } from './RightInspector'
 import { RightDslPanel } from './RightDslPanel'
+import { PresentationControl } from './PresentationControl'
 import { useEditorUi } from '../store/useEditorUi'
 
 /**
@@ -20,7 +21,17 @@ export function EditorLayout() {
   const inspectorOpen = useEditorUi((s) => s.inspectorOpen)
   const dslOpen = useEditorUi((s) => s.dslOpen)
   const focusMode = useEditorUi((s) => s.focusMode)
+  const isPresenting = useEditorUi((s) => s.isPresenting)
   const rowRef = useRef<HTMLDivElement>(null)
+
+  if (isPresenting) {
+    return (
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <EditorShell />
+        <PresentationControl />
+      </div>
+    )
+  }
 
   if (focusMode) {
     return (

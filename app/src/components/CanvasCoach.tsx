@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { react } from 'tldraw'
 import { useDocStore } from '../store/useDocStore'
+import { useApp, selectCurrentFile } from '../store/useApp'
 
 const TIPS = [
   'Press T to add text, or drag an icon from the left rail',
@@ -14,8 +15,30 @@ const TIPS = [
  */
 export function CanvasCoach() {
   const editor = useDocStore((s) => s.editor)
+  const file = useApp(selectCurrentFile)
+  const fileId = file?.id
+
   const [empty, setEmpty] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(() => {
+    if (!fileId) return false
+    try {
+      const list = JSON.parse(localStorage.getItem('nexusblock-coach-dismissed-files') || '[]')
+      return list.includes(fileId)
+    } catch {
+      return false
+    }
+  })
+
+  // Synchronize dismissed state when active file changes
+  useEffect(() => {
+    if (!fileId) return
+    try {
+      const list = JSON.parse(localStorage.getItem('nexusblock-coach-dismissed-files') || '[]')
+      setDismissed(list.includes(fileId))
+    } catch {
+      setDismissed(false)
+    }
+  }, [fileId])
 
   useEffect(() => {
     if (!editor) return
@@ -23,6 +46,18 @@ export function CanvasCoach() {
       setEmpty(editor.getCurrentPageShapeIds().size === 0)
     })
   }, [editor])
+
+  const handleDismiss = () => {
+    setDismissed(true)
+    if (!fileId) return
+    try {
+      const list = JSON.parse(localStorage.getItem('nexusblock-coach-dismissed-files') || '[]')
+      if (!list.includes(fileId)) {
+        list.push(fileId)
+        localStorage.setItem('nexusblock-coach-dismissed-files', JSON.stringify(list))
+      }
+    } catch {}
+  }
 
   if (!editor || !empty || dismissed) return null
 
@@ -36,7 +71,7 @@ export function CanvasCoach() {
           ))}
         </ul>
         <button
-          onClick={() => setDismissed(true)}
+          onClick={handleDismiss}
           className="mt-4 rounded-full border border-grey-2 px-4 py-1.5 text-xs font-semibold text-ink hover:border-ink"
         >
           Got it

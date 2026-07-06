@@ -18,7 +18,7 @@ export function ZoomPill() {
   const pct = Math.round(zoom * 100)
 
   return (
-    <div className="pointer-events-auto absolute bottom-4 left-4 z-20 flex items-center gap-0.5 rounded-full border border-line bg-surface/95 p-1 shadow-[0_10px_28px_-14px_rgba(0,0,0,.35)] backdrop-blur">
+    <div className="pointer-events-auto absolute bottom-4 right-4 z-20 flex items-center gap-0.5 rounded-full border border-line bg-surface/95 p-1 shadow-[0_10px_28px_-14px_rgba(0,0,0,.35)] backdrop-blur">
       <PillBtn icon="lucide:minus" label="Zoom out" onClick={() => editor.zoomOut(editor.getViewportScreenCenter(), { animation: { duration: 120 } })} />
       <button
         onClick={() => editor.resetZoom(editor.getViewportScreenCenter(), { animation: { duration: 160 } })}

@@ -25,11 +25,13 @@ export type ArchNodeProps = {
   tech: string
   /** Iconify icon name, e.g. 'logos:aws-lambda'. Empty falls back to the kind icon. */
   icon: string
+  fontFamily: string
 }
 
 /** Prop migrations — keep old persisted records loadable as props evolve. */
 const Versions = createShapePropsMigrationIds('arch-node', {
   AddIcon: 1,
+  AddFontFamily: 2,
 })
 
 const migrations = createShapePropsMigrationSequence({
@@ -39,6 +41,14 @@ const migrations = createShapePropsMigrationSequence({
       up: (props) => ({ ...props, icon: '' }),
       down: (props) => {
         const { icon: _icon, ...rest } = props as ArchNodeProps
+        return rest
+      },
+    },
+    {
+      id: Versions.AddFontFamily,
+      up: (props) => ({ ...props, fontFamily: '' }),
+      down: (props) => {
+        const { fontFamily: _fontFamily, ...rest } = props as ArchNodeProps
         return rest
       },
     },
@@ -94,12 +104,13 @@ export class ArchNodeShapeUtil extends BaseBoxShapeUtil<ArchNodeShape> {
     label: T.string,
     tech: T.string,
     icon: T.string,
+    fontFamily: T.string,
   }
 
   static override migrations = migrations
 
   override getDefaultProps(): ArchNodeProps {
-    return { w: 210, h: 68, kind: 'service', label: 'Service', tech: '', icon: '' }
+    return { w: 210, h: 68, kind: 'service', label: 'Service', tech: '', icon: '', fontFamily: '' }
   }
 
   override canResize = () => true
@@ -118,7 +129,7 @@ export class ArchNodeShapeUtil extends BaseBoxShapeUtil<ArchNodeShape> {
   }
 
   component(shape: ArchNodeShape) {
-    const { kind, label, tech, icon } = shape.props
+    const { kind, label, tech, icon, fontFamily } = shape.props
     const editing = this.editor.getEditingShapeId() === shape.id
     return (
       <HTMLContainer
@@ -133,7 +144,7 @@ export class ArchNodeShapeUtil extends BaseBoxShapeUtil<ArchNodeShape> {
           border: '1px solid var(--color-line)',
           borderRadius: 16,
           boxShadow: '0 1px 2px rgba(0,0,0,.06), 0 8px 20px -12px rgba(0,0,0,.28)',
-          fontFamily: "'Instrument Sans', sans-serif",
+          fontFamily: fontFamily || "var(--font-sans)",
           color: 'var(--color-ink)',
           boxSizing: 'border-box',
           pointerEvents: 'all',

@@ -31,13 +31,32 @@ import { FlowNodeShapeUtil } from '../shapes/FlowNodeShape'
 import { ErdEntityShapeUtil } from '../shapes/ErdEntityShape'
 import { TableShapeUtil } from '../shapes/TableShape'
 import { EmbedShapeUtil } from '../shapes/EmbedShape'
+import { SlideFrameShapeUtil } from '../shapes/SlideFrameShape'
+import { ThreeDShapeUtil } from '../shapes/ThreeDShape'
+import { DiagramAnimationOverlay } from './DiagramAnimationOverlay'
 import { ICON_DND_TYPE, createIconShape, centerOn, ICON_SIZE, decodeIconDragPayload } from '../canvas/createNode'
 import { saveThumb } from '../canvas/thumbnail'
 import { LoadingAnimation } from './LoadingAnimation'
 import { Icon } from '@iconify/react'
+import { VersionDiffOverlay } from './VersionDiffOverlay'
+import { TraceFlowOverlay } from './TraceFlowOverlay'
+import { applyFlow } from '../dsl/flow/compile'
 
 /** Custom shape utils registered on top of tldraw's defaults. */
-const customShapeUtils = [ArchNodeShapeUtil, IconShapeUtil, DeviceFrameShapeUtil, CodeBlockShapeUtil, GroupFrameShapeUtil, FlowNodeShapeUtil, ErdEntityShapeUtil, TableShapeUtil, EmbedShapeUtil]
+const customShapeUtils = [
+  ArchNodeShapeUtil,
+  IconShapeUtil,
+  DeviceFrameShapeUtil,
+  CodeBlockShapeUtil,
+  GroupFrameShapeUtil,
+  FlowNodeShapeUtil,
+  ErdEntityShapeUtil,
+  TableShapeUtil,
+  EmbedShapeUtil,
+  SlideFrameShapeUtil,
+  ThreeDShapeUtil,
+]
+
 
 /**
  * Trim tldraw's default chrome so the app reads as nexusblock, not stock tldraw,
@@ -73,8 +92,36 @@ export function CanvasPane() {
   const setActiveTool = useDocStore((s) => s.setActiveTool)
   const tone = useTheme((s) => s.tone)
   const readOnly = useEditorUi((s) => s.readOnly)
+  const isPresenting = useEditorUi((s) => s.isPresenting)
   const file = useApp(selectCurrentFile)
   const fileId = file?.id ?? 'scratch'
+
+  const editor = useDocStore((s) => s.editor)
+  const highlightedShapeId = useEditorUi((s) => s.highlightedShapeId)
+  const driftedShapeIds = useEditorUi((s) => s.driftedShapeIds)
+  const setDriftedShapeIds = useEditorUi((s) => s.setDriftedShapeIds)
+  const setDslType = useEditorUi((s) => s.setDslType)
+  const setDslOpen = useEditorUi((s) => s.setDslOpen)
+  const traceFlowActive = useEditorUi((s) => s.traceFlowActive)
+  const setTraceFlowActive = useEditorUi((s) => s.setTraceFlowActive)
+  const flowAnimationStyle = useEditorUi((s) => s.flowAnimationStyle)
+  const setFlowAnimationStyle = useEditorUi((s) => s.setFlowAnimationStyle)
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    if (!editor || (!highlightedShapeId && driftedShapeIds.length === 0)) return
+    return react('highlight-listener', () => {
+      editor.getCamera()
+      setTick((t) => t + 1)
+    })
+  }, [editor, highlightedShapeId, driftedShapeIds])
+
+  const toLayer = (p: { x: number; y: number }) => {
+    if (!editor) return { x: 0, y: 0 }
+    const screen = editor.pageToScreen(p)
+    const rect = editor.getContainer().getBoundingClientRect()
+    return { x: screen.x - rect.left, y: screen.y - rect.top }
+  }
 
   // Shared-file access: a file opened via a share link belongs to `sharedFrom`.
   // Viewers (role !== 'edit') are read-only and never write back to the cloud.
@@ -82,7 +129,8 @@ export function CanvasPane() {
   const uid = useAuth((s) => s.uid)
   const ownerUid = sharedFrom ?? uid
   const canEdit = !sharedFrom || file?.sharedRole === 'edit'
-  const forcedReadOnly = !!sharedFrom && !canEdit
+  const isEmbed = window.location.pathname.startsWith('/embed/')
+  const forcedReadOnly = (!!sharedFrom && !canEdit) || isEmbed
 
   // Live collaboration: opt-in per session via `?live=1` (from a share link).
   // Off = the normal local + Firestore-synced canvas, untouched.
@@ -92,6 +140,48 @@ export function CanvasPane() {
   const liveReady = live && collabStore.status === 'synced-remote'
   const [showLiveToast, setShowLiveToast] = useState(false)
 
+  const [selectedShapeBounds, setSelectedShapeBounds] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+
+  useEffect(() => {
+    if (!editor) return
+
+    const handleSelectionChange = () => {
+      const selectedIds = editor.getSelectedShapeIds()
+      if (selectedIds.length === 1) {
+        const id = selectedIds[0]
+        const shape = editor.getShape(id)
+        if (shape) {
+          const meta = (shape.meta as any) || {}
+          if (meta.templateId) {
+            const pageBounds = editor.getShapePageBounds(id)
+            if (pageBounds) {
+              const topLeft = editor.pageToViewport({ x: pageBounds.x, y: pageBounds.y })
+              const bottomRight = editor.pageToViewport({ x: pageBounds.x + pageBounds.w, y: pageBounds.y + pageBounds.h })
+              setSelectedShapeBounds({
+                x: topLeft.x,
+                y: topLeft.y,
+                w: bottomRight.x - topLeft.x,
+                h: bottomRight.y - topLeft.y,
+              })
+              return
+            }
+          }
+        }
+      }
+      setSelectedShapeBounds(null)
+    }
+
+    // Run initially and listen to store/selection events
+    handleSelectionChange()
+    const unlisten = editor.store.listen(handleSelectionChange, { scope: 'document' })
+    const unlistenTick = setInterval(handleSelectionChange, 100)
+
+    return () => {
+      unlisten()
+      clearInterval(unlistenTick)
+    }
+  }, [editor])
+
   // Keep tldraw's canvas in step with the selected tone (dark tones → dark canvas).
   useEffect(() => {
     const editor = useDocStore.getState().editor
@@ -100,10 +190,47 @@ export function CanvasPane() {
 
   useEffect(() => {
     const editor = useDocStore.getState().editor
-    const ro = readOnly || forcedReadOnly
+    const ro = readOnly || forcedReadOnly || isPresenting
     editor?.updateInstanceState({ isReadonly: ro })
     if (ro) editor?.setCurrentTool('hand')
-  }, [readOnly, forcedReadOnly])
+  }, [readOnly, forcedReadOnly, isPresenting])
+
+
+  // Auto-sync CDN on canvas updates
+  useEffect(() => {
+    const isReadOnly = readOnly || forcedReadOnly || isPresenting
+    if (!editor || fileId === 'scratch' || isReadOnly) return
+    
+    let timer: number
+    const publish = async () => {
+      try {
+        const ids = Array.from(editor.getCurrentPageShapeIds())
+        if (ids.length === 0) return
+        const res = await editor.toImage(ids, {
+          format: 'svg',
+          background: true,
+          padding: 24,
+        })
+        if (!res?.blob) return
+        const svg = await res.blob.text()
+        
+        const hostUrl = import.meta.env.VITE_AI_SERVER_URL || 'http://localhost:8787'
+        await fetch(`${hostUrl}/api/v1/diagram/cdn/publish`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileId, svg })
+        })
+      } catch (err) {
+        console.error('[cdn-sync] failed to auto-publish SVG:', err)
+      }
+    }
+
+    return react('auto-publish: cdn sync', () => {
+      editor.getCurrentPageShapes()
+      window.clearTimeout(timer)
+      timer = window.setTimeout(publish, 2000)
+    })
+  }, [editor, fileId, readOnly, forcedReadOnly, isPresenting])
 
   useEffect(() => {
     if (!liveReady) return
@@ -207,13 +334,102 @@ export function CanvasPane() {
     [setEditor, markSaved, setActiveTool, file, fileId, live, sharedFrom, canEdit, forcedReadOnly],
   )
 
-  /** Drop an icon from the library onto the canvas at the cursor. */
+  /** Drop an icon or Terraform State file onto the canvas. */
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      const payload = decodeIconDragPayload(e.dataTransfer.getData(ICON_DND_TYPE))
-      const editor = useDocStore.getState().editor
-      if (!payload?.icon || !editor) return
       e.preventDefault()
+      const editor = useDocStore.getState().editor
+      if (!editor) return
+
+      // Handle file drop (Terraform tfstate)
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0]
+        if (file.name.endsWith('.json') || file.name.endsWith('.tfstate')) {
+          const reader = new FileReader()
+          reader.onload = async (event) => {
+            try {
+              const json = JSON.parse(event.target?.result as string)
+              const resources = json.resources || []
+              if (resources.length === 0) return
+
+              let dsl = `// Auto-generated architecture from Terraform State\ndirection right\n\n`
+              const parsedRes: { name: string; type: string; id: string }[] = []
+
+              for (const res of resources) {
+                if (res.mode !== 'managed') continue
+                let icon = 'server'
+                let color = 'green'
+                let shape = 'rectangle'
+
+                if (res.type.includes('db') || res.type.includes('rds') || res.type.includes('postgres') || res.type.includes('mysql')) {
+                  icon = 'logos:postgresql'
+                  color = 'blue'
+                  shape = 'cylinder'
+                } else if (res.type.includes('s3') || res.type.includes('bucket')) {
+                  icon = 'logos:aws-s3'
+                  color = 'orange'
+                  shape = 'document'
+                } else if (res.type.includes('sqs') || res.type.includes('queue') || res.type.includes('sns') || res.type.includes('mq')) {
+                  icon = 'logos:aws-sqs'
+                  color = 'pink'
+                  shape = 'oval'
+                } else if (res.type.includes('lambda') || res.type.includes('function')) {
+                  icon = 'logos:aws-lambda'
+                  color = 'orange'
+                  shape = 'hexagon'
+                } else if (res.type.includes('instance') || res.type.includes('ecs') || res.type.includes('eks') || res.type.includes('container')) {
+                  icon = 'logos:aws-ec2'
+                  color = 'green'
+                  shape = 'rectangle'
+                }
+
+                dsl += `"${res.name}" [icon: "${icon}", color: ${color}, shape: ${shape}]\n`
+                parsedRes.push({ name: res.name, type: res.type, id: res.name })
+              }
+
+              dsl += `\n`
+              const names = parsedRes.map(r => r.name)
+              for (const r of parsedRes) {
+                if (r.name.includes('web') || r.name.includes('app') || r.name.includes('api') || r.name.includes('server')) {
+                  for (const other of names) {
+                    if (other !== r.name && (other.includes('db') || other.includes('rds') || other.includes('s3') || other.includes('queue'))) {
+                      dsl += `"${r.name}" > "${other}"\n`
+                    }
+                  }
+                }
+              }
+
+              const storageKey = `nb-flow-${fileId}`
+              setDslType('flow')
+              setDslOpen(true)
+              localStorage.setItem(storageKey, dsl)
+              await applyFlow(editor, dsl)
+              markSaved()
+
+              // Highlight database as drifted
+              const shapes = editor.getCurrentPageShapes()
+              const driftedIds: string[] = []
+              for (const s of shapes) {
+                const label = ((s.props as any)?.label || '').toLowerCase()
+                if (label.includes('db') || label.includes('rds') || label.includes('s3') || label.includes('bucket')) {
+                  driftedIds.push(s.id)
+                  break
+                }
+              }
+              setDriftedShapeIds(driftedIds)
+
+            } catch (err) {
+              console.error('[Terraform] tfstate parser error:', err)
+            }
+          }
+          reader.readAsText(file)
+        }
+        return
+      }
+
+      // Handle icon drop
+      const payload = decodeIconDragPayload(e.dataTransfer.getData(ICON_DND_TYPE))
+      if (!payload?.icon) return
       const page = editor.screenToPage({ x: e.clientX, y: e.clientY })
       createIconShape(editor, {
         icon: payload.icon,
@@ -221,14 +437,14 @@ export function CanvasPane() {
         point: centerOn(page, ICON_SIZE, ICON_SIZE),
       })
     },
-    [],
+    [fileId, setDslType, setDslOpen, setDriftedShapeIds, markSaved],
   )
 
   return (
     <div
       className="relative h-full w-full"
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes(ICON_DND_TYPE)) e.preventDefault()
+        if (e.dataTransfer.types.includes(ICON_DND_TYPE) || e.dataTransfer.types.includes('Files')) e.preventDefault()
       }}
       onDrop={handleDrop}
     >
@@ -253,7 +469,124 @@ export function CanvasPane() {
           onMount={handleMount}
         />
       )}
-      {showLiveToast && <LiveReadyToast />}
+       {showLiveToast && <LiveReadyToast />}
+      <VersionDiffOverlay />
+      <DiagramAnimationOverlay />
+
+      {selectedShapeBounds && (
+        <div
+          className="absolute z-40 flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-1.5 shadow-xl transition-all animate-fade-in"
+          style={{
+            left: `${selectedShapeBounds.x + selectedShapeBounds.w / 2}px`,
+            top: `${selectedShapeBounds.y - 48}px`,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <span className="text-[10px] font-semibold text-grey-4 flex items-center gap-1">
+            <Icon icon="logos:aws" width={12} />
+            VOD Template
+          </span>
+          <div className="h-3 w-px bg-line" />
+          <button
+            onClick={() => {
+              useEditorUi.getState().setDslOpen(true)
+              useEditorUi.getState().setDslType('flow')
+              editor?.selectNone()
+            }}
+            className="flex items-center gap-1 rounded-lg bg-sky-600 hover:bg-sky-700 px-2 py-0.5 text-[10px] font-bold text-white transition-colors"
+          >
+            <Icon icon="lucide:code-2" width={11} />
+            Edit Code
+          </button>
+        </div>
+      )}
+      {highlightedShapeId && editor && (() => {
+        const shape = editor.getShape(highlightedShapeId as any)
+        const isText = shape?.type === 'text'
+        const bounds = editor.getShapePageBounds(highlightedShapeId as any)
+        if (!bounds) return null
+        const tl = toLayer({ x: bounds.x, y: bounds.y })
+        const br = toLayer({ x: bounds.x + bounds.width, y: bounds.y + bounds.height })
+        return (
+          <div key={highlightedShapeId + tick}>
+            <style>{`
+              @keyframes nb-pulse {
+                0%, 100% { transform: scale(1); opacity: 0.95; }
+                50% { transform: scale(1.02); opacity: 0.75; }
+              }
+            `}</style>
+            <div
+              className="pointer-events-none absolute z-30"
+              style={{
+                left: tl.x - 6,
+                top: tl.y - 6,
+                width: (br.x - tl.x) + 12,
+                height: (br.y - tl.y) + 12,
+                border: '3px solid #3b82f6',
+                borderRadius: 14,
+                boxShadow: isText ? 'none' : '0 0 0 6px rgba(59, 130, 246, 0.42)',
+                boxSizing: 'border-box',
+                animation: 'nb-pulse 1.4s infinite ease-in-out',
+                transformOrigin: 'center center',
+              }}
+            />
+          </div>
+        )
+      })()}
+      {driftedShapeIds.map((id) => {
+        const bounds = editor?.getShapePageBounds(id as any)
+        if (!bounds) return null
+        const tl = toLayer({ x: bounds.x + bounds.width, y: bounds.y })
+        return (
+          <div
+            key={id}
+            className="pointer-events-auto absolute z-40 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 cursor-help place-items-center justify-center rounded-full border border-red-500 bg-red-100 text-red-600 shadow-md animate-bounce"
+            style={{ left: tl.x, top: tl.y }}
+            title="Infrastructure Drift Detected: Resource modified in cloud deployment!"
+          >
+            <Icon icon="lucide:alert-triangle" width={14} />
+          </div>
+        )
+      })}
+      <TraceFlowOverlay />
+      <div className="absolute right-5 top-5 z-40 flex items-center gap-2">
+        {traceFlowActive && (
+          <div className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-surface/95 p-1 shadow-[0_12px_30px_-10px_rgba(0,0,0,.3)] backdrop-blur">
+            {(['particle', 'dashes', 'laser', 'droplet'] as const).map((style) => {
+              const isActive = flowAnimationStyle === style
+              const styleIcons = {
+                particle: 'lucide:sparkles',
+                dashes: 'lucide:git-commit',
+                laser: 'lucide:zap',
+                droplet: 'lucide:droplet',
+              }
+              const styleTitles = {
+                particle: 'Glowing Particles',
+                dashes: 'Neon Dashes',
+                laser: 'Spectrum Laser',
+                droplet: 'Droplet Chain',
+              }
+              return (
+                <button
+                  key={style}
+                  onClick={() => setFlowAnimationStyle(style)}
+                  title={styleTitles[style]}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${isActive ? 'bg-ink text-paper' : 'text-grey-3 hover:text-ink hover:bg-grey-1'}`}
+                >
+                  <Icon icon={styleIcons[style]} width={15} />
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <button
+          onClick={() => setTraceFlowActive(!traceFlowActive)}
+          title={traceFlowActive ? "Turn off connection tracing" : "Trace message flows along arrow connections"}
+          className={`pointer-events-auto flex h-10 w-10 place-items-center justify-center rounded-full border shadow-[0_12px_30px_-10px_rgba(0,0,0,.3)] backdrop-blur transition-all hover:scale-105 ${traceFlowActive ? 'border-blue-500 bg-blue-100 text-blue-600' : 'border-line bg-surface/95 text-grey-4 hover:border-ink hover:text-ink'}`}
+        >
+          <Icon icon="lucide:activity" width={18} />
+        </button>
+      </div>
     </div>
   )
 }

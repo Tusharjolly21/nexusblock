@@ -23,15 +23,19 @@ import { useApp, selectCurrentFile } from '../store/useApp'
  */
 export function EditorShell() {
   const focusMode = useEditorUi((s) => s.focusMode)
+  const isPresenting = useEditorUi((s) => s.isPresenting)
   const file = useApp(selectCurrentFile)
   const viewOnlyShared = !!file?.sharedFrom && file.sharedRole !== 'edit'
+  const isEmbed = window.location.pathname.startsWith('/embed/')
+  const hideChrome = focusMode || isPresenting || isEmbed
+
   return (
     <div className="flex min-h-0 flex-1">
-      {!focusMode && !viewOnlyShared && <IconRail />}
+      {!hideChrome && !viewOnlyShared && <IconRail />}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className="relative min-h-0 flex-1" data-tour="canvas">
           <CanvasPane />
-          {!focusMode && !viewOnlyShared && (
+          {!hideChrome && !viewOnlyShared && (
             <>
               <ConnectionHandles />
               <HoverActions />
@@ -48,8 +52,8 @@ export function EditorShell() {
           )}
           {/* Comment pins render for everyone (viewers included) so they can
               read threads; placing new pins is gated to editors in the layer. */}
-          {!focusMode && <CommentPinLayer />}
-          {focusMode && <FocusModeHint />}
+          {!hideChrome && <CommentPinLayer />}
+          {focusMode && !isPresenting && <FocusModeHint />}
         </div>
       </div>
     </div>

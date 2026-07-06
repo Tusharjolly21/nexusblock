@@ -1,7 +1,7 @@
 /** Parser for the Eraser-style ERD DSL: entities, attributes, relationships. */
 
 export type ErdAttr = { name: string; type: string; pk: boolean }
-export type ErdEntity = { name: string; icon: string; color?: string; attrs: ErdAttr[] }
+export type ErdEntity = { name: string; icon: string; color?: string; attrs: ErdAttr[]; pos?: string }
 export type ErdConnector = '<' | '>' | '-' | '<>'
 export type ErdEnd = { entity: string; attr?: string }
 export type ErdRel = { from: ErdEnd; to: ErdEnd; connector: ErdConnector; color?: string }
@@ -45,8 +45,8 @@ function splitStatements(text: string): string[] {
   return out
 }
 
-function parseProps(inner: string): { icon?: string; color?: string } {
-  const props: { icon?: string; color?: string } = {}
+function parseProps(inner: string): { icon?: string; color?: string; pos?: string } {
+  const props: { icon?: string; color?: string; pos?: string } = {}
   for (const pair of inner.split(',')) {
     const idx = pair.indexOf(':')
     if (idx === -1) continue
@@ -54,6 +54,7 @@ function parseProps(inner: string): { icon?: string; color?: string } {
     const val = pair.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
     if (key === 'icon') props.icon = val
     if (key === 'color') props.color = val
+    if (key === 'pos') props.pos = val
   }
   return props
 }
@@ -121,6 +122,7 @@ export function parseErd(source: string): ErdDoc {
         const props = parseProps(header.slice(b + 1, header.lastIndexOf(']')))
         if (props.icon) entity.icon = props.icon
         if (props.color) entity.color = props.color
+        if (props.pos) entity.pos = props.pos
       }
       for (const rawAttr of body.split('\n')) {
         const attrLine = stripComment(rawAttr).trim()

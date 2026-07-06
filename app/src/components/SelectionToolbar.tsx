@@ -142,6 +142,22 @@ export function SelectionToolbar() {
           </>
         )}
         <Sep />
+        <TBtn
+          icon="lucide:file-image"
+          label="Copy as SVG Markdown"
+          onClick={async () => {
+            try {
+              const res = await editor.getSvgString(Array.from(ids()))
+              if (!res?.svg) return
+              const base64 = btoa(unescape(encodeURIComponent(res.svg)))
+              const dataUri = `data:image/svg+xml;base64,${base64}`
+              const markdown = `![DrawDocs Selection](${dataUri})`
+              await navigator.clipboard.writeText(markdown)
+            } catch (err) {
+              console.error("[SVG Copy] Failed:", err)
+            }
+          }}
+        />
         <TBtn icon="lucide:lock" label="Lock" onClick={() => act(() => editor.toggleLock(ids()))} />
         <TBtn icon="lucide:trash-2" label="Delete" onClick={() => act(() => editor.deleteShapes(ids()))} />
       </div>

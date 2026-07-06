@@ -1,0 +1,1204 @@
+diagram global_realtime_messaging "Global Real-Time Messaging Platform" {
+  type: architecture
+  direction: LR
+  layout: manual
+
+  canvas: {
+    width: 7000,
+    height: 2700,
+    background: "#151515",
+    grid: 24
+  }
+
+  catalog: {
+    category: "Messaging",
+    difficulty: "Advanced",
+    provider: "Cloud Neutral",
+    tags: ["real-time-chat", "websocket", "kafka", "cassandra", "presence", "multi-region"],
+    animated: true,
+    editable: true
+  }
+
+  styles: {
+    user:     { fill: "#E8F0FE", stroke: "#4F46E5", text: "#111827" },
+    edge:     { fill: "#FFF7ED", stroke: "#EA580C", text: "#111827" },
+    security: { fill: "#FFF1F2", stroke: "#E11D48", text: "#111827" },
+    compute:  { fill: "#ECFDF5", stroke: "#059669", text: "#111827" },
+    data:     { fill: "#F5F3FF", stroke: "#7C3AED", text: "#111827" },
+    stream:   { fill: "#ECFEFF", stroke: "#0891B2", text: "#111827" },
+    media:    { fill: "#FEF2F2", stroke: "#DC2626", text: "#111827" },
+    ops:      { fill: "#F3F4F6", stroke: "#4B5563", text: "#111827" }
+  }
+
+  group clients "Client Applications" [
+    x: -1750,
+    y: -450,
+    width: 320,
+    height: 704
+  ] {
+    node sender_device "Sender Mobile Device" [
+      subtitle: "End-to-End Encryption Client",
+      kind: client,
+      icon: lucide:smartphone,
+      style: user,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node recipient_device "Recipient Mobile Device" [
+      subtitle: "Online or Offline Recipient",
+      kind: client,
+      icon: lucide:smartphone,
+      style: user,
+      x: 48,
+      y: 240,
+      width: 224,
+      height: 128
+    ]
+
+    node web_client "Web and Desktop Client" [
+      subtitle: "Linked Device Session",
+      kind: client,
+      icon: lucide:monitor,
+      style: user,
+      x: 48,
+      y: 432,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group edge_connection "Global Edge and Connection Layer" [
+    x: -850,
+    y: -450,
+    width: 1184,
+    height: 750
+  ] {
+    node global_dns "Anycast DNS" [
+      subtitle: "Latency-Based Regional Routing",
+      kind: network,
+      icon: lucide:globe-2,
+      style: edge,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node global_load_balancer "Global Load Balancer" [
+      subtitle: "Health-Aware Regional Routing",
+      kind: network,
+      icon: lucide:network,
+      style: edge,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node websocket_gateway "WebSocket Gateway Fleet" [
+      subtitle: "Long-Lived TLS Connections",
+      kind: gateway,
+      icon: lucide:radio,
+      style: edge,
+      x: 800,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node api_gateway "HTTPS API Gateway" [
+      subtitle: "Uploads, History and Device APIs",
+      kind: gateway,
+      icon: lucide:waypoints,
+      style: edge,
+      x: 400,
+      y: 320,
+      width: 224,
+      height: 128
+    ]
+
+    node edge_rate_limiter "Distributed Rate Limiter" [
+      subtitle: "Per User, Device and IP Quotas",
+      kind: security,
+      icon: lucide:gauge,
+      style: security,
+      x: 800,
+      y: 320,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group identity_security "Identity, Device Trust and Key Management" [
+    x: 600,
+    y: -600,
+    width: 1050,
+    height: 550
+  ] {
+    node auth_service "Authentication Service" [
+      subtitle: "Access and Refresh Tokens",
+      kind: authentication,
+      icon: lucide:shield-check,
+      style: security,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node device_registry "Device Registry" [
+      subtitle: "Trusted Devices and Sessions",
+      kind: database,
+      icon: lucide:smartphone-nfc,
+      style: data,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node key_directory "Public Key Directory" [
+      subtitle: "Identity Keys and Signed Prekeys Only",
+      kind: security,
+      icon: lucide:key-round,
+      style: security,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node abuse_detection "Abuse and Spam Detection" [
+      subtitle: "Metadata and Behaviour Signals",
+      kind: security,
+      icon: lucide:shield-alert,
+      style: security,
+      x: 224,
+      y: 288,
+      width: 224,
+      height: 128
+    ]
+
+    node token_cache "Session and Token Cache" [
+      subtitle: "Short-Lived Authorization State",
+      kind: cache,
+      icon: simple-icons:redis,
+      style: data,
+      x: 576,
+      y: 288,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group messaging_core "Regional Messaging Control Plane" [
+    x: 600,
+    y: 150,
+    width: 1400,
+    height: 1000
+  ] {
+    node chat_ingress "Chat Ingress Service" [
+      subtitle: "Validate Envelopes and Membership",
+      kind: service,
+      icon: lucide:messages-square,
+      style: compute,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node idempotency_service "Idempotency and Dedup Service" [
+      subtitle: "Client Message ID Enforcement",
+      kind: service,
+      icon: lucide:copy-check,
+      style: compute,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node conversation_service "Conversation Service" [
+      subtitle: "Membership, Roles and Fanout Policy",
+      kind: service,
+      icon: lucide:users,
+      style: compute,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node presence_service "Presence Service" [
+      subtitle: "Online State, Last Seen and Typing",
+      kind: service,
+      icon: lucide:activity,
+      style: compute,
+      x: 1048,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node delivery_router "Message Delivery Router" [
+      subtitle: "Online Fanout by Recipient Session",
+      kind: service,
+      icon: lucide:route,
+      style: compute,
+      x: 224,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node receipt_service "Delivery Receipt Service" [
+      subtitle: "Sent, Delivered and Read State",
+      kind: service,
+      icon: lucide:check-check,
+      style: compute,
+      x: 576,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node history_service "Message History Service" [
+      subtitle: "Cursor-Based Sync and Reconnect",
+      kind: service,
+      icon: lucide:history,
+      style: compute,
+      x: 928,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node session_registry "Active Session Registry" [
+      subtitle: "User to Gateway and Device Mapping",
+      kind: cache,
+      icon: simple-icons:redis,
+      style: data,
+      x: 224,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node offline_delivery "Offline Delivery Coordinator" [
+      subtitle: "Pending Message and Push Decisions",
+      kind: service,
+      icon: lucide:inbox,
+      style: compute,
+      x: 576,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node group_fanout_worker "Large Group Fanout Workers" [
+      subtitle: "Asynchronous Recipient Expansion",
+      kind: compute,
+      icon: lucide:git-fork,
+      style: compute,
+      x: 928,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group ordering_storage "Ordering, Durable Storage and Event Backbone" [
+    x: 2350,
+    y: 100,
+    width: 1550,
+    height: 1000
+  ] {
+    node message_stream "Partitioned Message Stream" [
+      subtitle: "Kafka Partitioned by Conversation ID",
+      kind: event-bus,
+      icon: simple-icons:apachekafka,
+      style: stream,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node receipt_stream "Receipt and Presence Stream" [
+      subtitle: "Independent High-Volume Event Path",
+      kind: event-bus,
+      icon: simple-icons:apachekafka,
+      style: stream,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node message_store "Distributed Message Store" [
+      subtitle: "Cassandra / ScyllaDB, Time-Ordered Rows",
+      kind: database,
+      icon: simple-icons:apachecassandra,
+      style: data,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node conversation_store "Conversation Metadata Store" [
+      subtitle: "Participants, Roles and Sequence State",
+      kind: database,
+      icon: lucide:database,
+      style: data,
+      x: 1104,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node dedup_store "Message Deduplication Store" [
+      subtitle: "Short-TTL Client Message IDs",
+      kind: database,
+      icon: lucide:database-zap,
+      style: data,
+      x: 224,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node pending_store "Pending Delivery Store" [
+      subtitle: "Per Device Delivery Cursor",
+      kind: database,
+      icon: lucide:database-clock,
+      style: data,
+      x: 576,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node search_index "Encrypted Metadata Search Index" [
+      subtitle: "Server-Visible Searchable Metadata Only",
+      kind: database,
+      icon: lucide:search,
+      style: data,
+      x: 928,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node retention_worker "Retention and Deletion Workers" [
+      subtitle: "TTL, Legal Holds and Account Deletion",
+      kind: compute,
+      icon: lucide:trash-2,
+      style: compute,
+      x: 400,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node change_data_capture "Change Data Capture Stream" [
+      subtitle: "Cross-Region Replication Feed",
+      kind: stream,
+      icon: lucide:refresh-cw,
+      style: stream,
+      x: 800,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group media_notifications "Media Delivery and Push Notifications" [
+    x: 4200,
+    y: -450,
+    width: 1150,
+    height: 900
+  ] {
+    node media_upload_service "Media Upload Service" [
+      subtitle: "Signed Multipart Upload Sessions",
+      kind: service,
+      icon: lucide:upload-cloud,
+      style: media,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node encrypted_object_storage "Encrypted Object Storage" [
+      subtitle: "Client-Encrypted Media Blobs",
+      kind: storage,
+      icon: lucide:hard-drive,
+      style: data,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node media_processing "Safe Media Processing" [
+      subtitle: "Metadata, Thumbnails and Format Validation",
+      kind: media,
+      icon: lucide:image,
+      style: media,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node media_cdn "Global Media CDN" [
+      subtitle: "Short-Lived Signed URLs",
+      kind: delivery,
+      icon: lucide:cloud,
+      style: edge,
+      x: 400,
+      y: 320,
+      width: 224,
+      height: 128
+    ]
+
+    node push_service "Push Notification Service" [
+      subtitle: "Minimal Metadata, No Message Plaintext",
+      kind: notification,
+      icon: lucide:bell,
+      style: media,
+      x: 48,
+      y: 592,
+      width: 224,
+      height: 128
+    ]
+
+    node mobile_push_providers "APNs and FCM" [
+      subtitle: "Platform Push Providers",
+      kind: external,
+      icon: lucide:send,
+      style: media,
+      x: 400,
+      y: 592,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group cross_region "Cross-Region Continuity and Failover" [
+    x: 4200,
+    y: 650,
+    width: 1350,
+    height: 800
+  ] {
+    node home_region_directory "Global Home Region Directory" [
+      subtitle: "User and Conversation Region Affinity",
+      kind: database,
+      icon: lucide:map-pinned,
+      style: data,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node replication_pipeline "Asynchronous Replication Pipeline" [
+      subtitle: "Durable CDC with Replay",
+      kind: stream,
+      icon: lucide:refresh-ccw,
+      style: stream,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node secondary_message_store "Secondary Region Message Store" [
+      subtitle: "Warm Recovery Copy",
+      kind: database,
+      icon: lucide:database-backup,
+      style: data,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node failover_controller "Regional Failover Controller" [
+      subtitle: "Health, Fencing and Traffic Shift",
+      kind: reliability,
+      icon: lucide:life-buoy,
+      style: ops,
+      x: 1048,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node replay_coordinator "Recovery Replay Coordinator" [
+      subtitle: "Rebuild Cursors and Resume Delivery",
+      kind: workflow,
+      icon: lucide:rotate-cw,
+      style: compute,
+      x: 400,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node conflict_guard "Single-Writer and Epoch Guard" [
+      subtitle: "Prevents Split-Brain Message Writes",
+      kind: security,
+      icon: lucide:lock-keyhole,
+      style: security,
+      x: 752,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group operations "Operations, Reliability and Governance" [
+    x: -2300,
+    y: 650,
+    width: 800,
+    height: 1000
+  ] {
+    node telemetry_collector "OpenTelemetry Collectors" [
+      subtitle: "Metrics, Logs and Distributed Traces",
+      kind: observability,
+      icon: simple-icons:opentelemetry,
+      style: ops,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node metrics_store "Prometheus-Compatible Metrics" [
+      subtitle: "Gateway, Queue and Delivery SLOs",
+      kind: observability,
+      icon: simple-icons:prometheus,
+      style: ops,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node dashboards "Grafana Dashboards" [
+      subtitle: "Capacity, Latency and Error Budgets",
+      kind: observability,
+      icon: simple-icons:grafana,
+      style: ops,
+      x: 48,
+      y: 288,
+      width: 224,
+      height: 128
+    ]
+
+    node alerting "Alerting and Incident Routing" [
+      subtitle: "SLO Burn Rate and Regional Alerts",
+      kind: notification,
+      icon: lucide:siren,
+      style: ops,
+      x: 400,
+      y: 288,
+      width: 224,
+      height: 128
+    ]
+
+    node audit_archive "Immutable Audit Archive" [
+      subtitle: "Admin, Key and Policy Changes",
+      kind: governance,
+      icon: lucide:scroll-text,
+      style: ops,
+      x: 48,
+      y: 528,
+      width: 224,
+      height: 128
+    ]
+
+    node capacity_controller "Capacity and Autoscaling Controller" [
+      subtitle: "Connections, Partitions and Hot Shards",
+      kind: reliability,
+      icon: lucide:chart-no-axes-combined,
+      style: ops,
+      x: 400,
+      y: 528,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  edge e01 sender_device -> global_dns [
+    label: "Resolve messaging endpoint",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e02 recipient_device -> global_dns [
+    label: "Resolve messaging endpoint",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e03 web_client -> global_dns [
+    label: "Resolve messaging endpoint",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e04 global_dns -> global_load_balancer [
+    label: "Route to nearest healthy region",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e05 global_load_balancer -> websocket_gateway [
+    label: "Establish persistent TLS connection",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e06 global_load_balancer -> api_gateway [
+    label: "Route HTTPS API traffic",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e07 websocket_gateway -> auth_service [
+    label: "Validate access token",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e08 api_gateway -> auth_service [
+    label: "Authorize API request",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e09 auth_service -> token_cache [
+    label: "Read session authorization state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e10 auth_service -> device_registry [
+    label: "Verify trusted device",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e11 websocket_gateway -> edge_rate_limiter [
+    label: "Enforce message and connection quotas",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e12 edge_rate_limiter -> chat_ingress [
+    label: "Forward accepted message envelope",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e13 websocket_gateway -> session_registry [
+    label: "Register user, device and gateway session",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e14 websocket_gateway -> presence_service [
+    label: "Connection and heartbeat events",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e15 sender_device -> key_directory [
+    label: "Fetch recipient identity keys and signed prekeys",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e16 sender_device -> websocket_gateway [
+    label: "Send encrypted message envelope",
+    kind: stream,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e17 chat_ingress -> abuse_detection [
+    label: "Evaluate spam and abuse signals",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e18 chat_ingress -> idempotency_service [
+    label: "Validate client message ID",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e19 idempotency_service -> dedup_store [
+    label: "Check and reserve deduplication key",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e20 chat_ingress -> conversation_service [
+    label: "Verify membership and fanout policy",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e21 conversation_service -> conversation_store [
+    label: "Read participants, roles and sequence state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e22 chat_ingress -> message_store [
+    label: "Persist encrypted message before acknowledgement",
+    kind: data,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e23 message_store -> chat_ingress [
+    label: "Durable write acknowledgement",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e24 chat_ingress -> sender_device [
+    label: "Return server message ID and accepted status",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e25 chat_ingress -> message_stream [
+    label: "Publish ordered event by conversation ID",
+    kind: event,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e26 message_stream -> group_fanout_worker [
+    label: "Expand recipients for large groups",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e27 message_stream -> delivery_router [
+    label: "Consume ordered message events",
+    kind: stream,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e28 group_fanout_worker -> delivery_router [
+    label: "Submit recipient delivery tasks",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e29 delivery_router -> session_registry [
+    label: "Resolve active recipient sessions",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e30 delivery_router -> websocket_gateway [
+    label: "Route message to owning gateway",
+    kind: stream,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e31 websocket_gateway -> recipient_device [
+    label: "Deliver encrypted message",
+    kind: stream,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e32 delivery_router -> offline_delivery [
+    label: "No active recipient session",
+    kind: failure,
+    route: orthogonal
+  ]
+
+  edge e33 offline_delivery -> pending_store [
+    label: "Record pending per-device delivery cursor",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e34 offline_delivery -> push_service [
+    label: "Request minimal wake-up notification",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e35 push_service -> mobile_push_providers [
+    label: "Send platform push request",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e36 mobile_push_providers -> recipient_device [
+    label: "Wake recipient application",
+    kind: notification,
+    route: orthogonal
+  ]
+
+  edge e37 recipient_device -> websocket_gateway [
+    label: "Reconnect and send delivery receipt",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e38 websocket_gateway -> receipt_service [
+    label: "Forward delivered and read receipts",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e39 receipt_service -> receipt_stream [
+    label: "Publish receipt event",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e40 receipt_service -> message_store [
+    label: "Update delivery state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e41 receipt_stream -> delivery_router [
+    label: "Route receipt to sender sessions",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e42 api_gateway -> history_service [
+    label: "Request cursor-based history sync",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e43 history_service -> message_store [
+    label: "Read time-ordered encrypted messages",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e44 history_service -> pending_store [
+    label: "Read per-device delivery cursor",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e45 history_service -> recipient_device [
+    label: "Return missed encrypted messages",
+    kind: data,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e46 sender_device -> api_gateway [
+    label: "Request signed media upload session",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e47 api_gateway -> media_upload_service [
+    label: "Create multipart upload authorization",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e48 media_upload_service -> sender_device [
+    label: "Return signed upload URLs",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e49 sender_device -> encrypted_object_storage [
+    label: "Upload client-encrypted media directly",
+    kind: data,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e50 encrypted_object_storage -> media_processing [
+    label: "Validate format and derive safe metadata",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e51 encrypted_object_storage -> media_cdn [
+    label: "Serve encrypted media origin",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e52 media_cdn -> recipient_device [
+    label: "Download encrypted media with signed URL",
+    kind: stream,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e53 websocket_gateway -> home_region_directory [
+    label: "Resolve user and conversation home region",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e54 message_store -> change_data_capture [
+    label: "Emit committed message changes",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e55 change_data_capture -> replication_pipeline [
+    label: "Replicate durable changes with replay",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e56 replication_pipeline -> secondary_message_store [
+    label: "Write warm recovery copy",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e57 failover_controller -> global_load_balancer [
+    label: "Shift traffic after health and fencing checks",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e58 failover_controller -> conflict_guard [
+    label: "Issue new writer epoch",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e59 conflict_guard -> secondary_message_store [
+    label: "Permit single-writer recovery mode",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e60 secondary_message_store -> replay_coordinator [
+    label: "Provide replicated messages and cursors",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e61 replay_coordinator -> delivery_router [
+    label: "Resume pending delivery after failover",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e62 retention_worker -> message_store [
+    label: "Apply TTL, deletion and legal hold policy",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e63 retention_worker -> encrypted_object_storage [
+    label: "Delete expired or user-removed media",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e64 search_index -> history_service [
+    label: "Resolve server-visible metadata filters",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e65 websocket_gateway -> telemetry_collector [
+    label: "Connection, latency and error telemetry",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e66 chat_ingress -> telemetry_collector [
+    label: "Message acceptance and persistence traces",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e67 delivery_router -> telemetry_collector [
+    label: "Delivery latency and fanout telemetry",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e68 message_stream -> telemetry_collector [
+    label: "Partition lag and hot-key metrics",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e69 telemetry_collector -> metrics_store [
+    label: "Export metrics and exemplars",
+    kind: observability,
+    route: orthogonal
+  ]
+
+  edge e70 metrics_store -> dashboards [
+    label: "Query service and SLO dashboards",
+    kind: observability,
+    route: orthogonal
+  ]
+
+  edge e71 metrics_store -> alerting [
+    label: "Evaluate burn-rate and saturation alerts",
+    kind: notification,
+    route: orthogonal
+  ]
+
+  edge e72 auth_service -> audit_archive [
+    label: "Record security and device trust changes",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e73 key_directory -> audit_archive [
+    label: "Record key publication and rotation events",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e74 capacity_controller -> websocket_gateway [
+    label: "Scale gateway capacity by active connections",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e75 capacity_controller -> message_stream [
+    label: "Rebalance partitions and hot conversations",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  animation realtime_message_delivery {
+    step 1 [
+      activate: [sender_device, global_dns, global_load_balancer, websocket_gateway],
+      edges: [e01, e04, e05],
+      narration: "The sender connects to the nearest healthy regional WebSocket gateway over TLS."
+    ]
+
+    step 2 [
+      activate: [websocket_gateway, auth_service, device_registry, session_registry],
+      edges: [e07, e10, e13],
+      narration: "The gateway validates the session, verifies the device and registers the active connection."
+    ]
+
+    step 3 [
+      activate: [sender_device, key_directory, websocket_gateway, edge_rate_limiter, chat_ingress],
+      edges: [e15, e16, e11, e12],
+      effect: stream-packet,
+      narration: "The sender encrypts the message for recipient devices and submits the encrypted envelope."
+    ]
+
+    step 4 [
+      activate: [chat_ingress, idempotency_service, conversation_service, message_store],
+      edges: [e18, e20, e22, e23],
+      narration: "The ingress path verifies idempotency and membership, then durably stores the encrypted message before acknowledging it."
+    ]
+
+    step 5 [
+      activate: [chat_ingress, message_stream, delivery_router, session_registry],
+      edges: [e25, e27, e29],
+      effect: data-flow,
+      narration: "The message is published to a conversation-partitioned stream, preserving per-conversation ordering."
+    ]
+
+    step 6 [
+      activate: [delivery_router, websocket_gateway, recipient_device],
+      edges: [e30, e31],
+      effect: stream-packet,
+      narration: "The delivery router resolves the recipient session and pushes the encrypted message through the owning gateway."
+    ]
+
+    step 7 [
+      activate: [recipient_device, websocket_gateway, receipt_service, receipt_stream, sender_device],
+      edges: [e37, e38, e39, e41],
+      narration: "Delivered and read receipts flow back through a separate receipt stream to the sender's active sessions."
+    ]
+  }
+
+  animation offline_delivery_and_reconnect {
+    step 1 [
+      activate: [delivery_router, session_registry, offline_delivery],
+      edges: [e29, e32],
+      narration: "The recipient has no active session, so delivery is handed to the offline coordinator."
+    ]
+
+    step 2 [
+      activate: [offline_delivery, pending_store, push_service, mobile_push_providers],
+      edges: [e33, e34, e35],
+      narration: "The platform records a pending delivery cursor and sends a minimal push notification without message plaintext."
+    ]
+
+    step 3 [
+      activate: [mobile_push_providers, recipient_device, websocket_gateway],
+      edges: [e36, e37],
+      effect: notification-pulse,
+      narration: "The device wakes, reconnects and re-establishes an authenticated session."
+    ]
+
+    step 4 [
+      activate: [api_gateway, history_service, pending_store, message_store, recipient_device],
+      edges: [e42, e43, e44, e45],
+      effect: data-flow,
+      narration: "The client resumes from its delivery cursor and downloads missed encrypted messages in order."
+    ]
+  }
+
+  animation regional_failover {
+    step 1 [
+      activate: [message_store, change_data_capture, replication_pipeline, secondary_message_store],
+      edges: [e54, e55, e56],
+      narration: "Committed messages are continuously copied to a warm secondary region through a replayable replication pipeline."
+    ]
+
+    step 2 [
+      activate: [failover_controller, conflict_guard, global_load_balancer],
+      edges: [e57, e58],
+      narration: "After regional health checks and fencing, the failover controller issues a new writer epoch and shifts traffic."
+    ]
+
+    step 3 [
+      activate: [conflict_guard, secondary_message_store, replay_coordinator, delivery_router],
+      edges: [e59, e60, e61],
+      effect: data-flow,
+      narration: "The secondary region enters single-writer mode, rebuilds delivery cursors and resumes pending message delivery."
+    ]
+  }
+}

@@ -135,6 +135,12 @@ function CodeBlock({ shape, editor, isEditing }: { shape: CodeBlockShape; editor
     update({ language: id, title: `${base}.${ext}` })
   }
 
+  const scale = shape.props.w / 440
+  const fontSize = Math.max(9, Math.min(36, Math.round(12 * scale)))
+  const titleHeight = Math.max(28, Math.min(60, Math.round(34 * scale)))
+  const dotSize = Math.max(6, Math.min(16, Math.round(9 * scale)))
+  const titleFontSize = Math.max(9, Math.min(24, Math.round(11 * scale)))
+
   return (
     <div
       style={{
@@ -154,19 +160,19 @@ function CodeBlock({ shape, editor, isEditing }: { shape: CodeBlockShape; editor
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          height: 34,
-          padding: '0 12px',
+          gap: Math.max(4, Math.min(12, Math.round(8 * scale))),
+          height: titleHeight,
+          padding: `0 ${Math.max(8, Math.min(24, Math.round(12 * scale)))}px`,
           borderBottom: '1px solid var(--color-line)',
           background: dark ? '#151515' : '#f3f3f1',
           color: 'var(--color-grey-4)',
-          fontSize: 11,
+          fontSize: titleFontSize,
           fontWeight: 700,
         }}
       >
-        <span style={{ width: 9, height: 9, borderRadius: 999, background: '#ff5f57' }} />
-        <span style={{ width: 9, height: 9, borderRadius: 999, background: '#ffbd2e' }} />
-        <span style={{ width: 9, height: 9, borderRadius: 999, background: '#28c840' }} />
+        <span style={{ width: dotSize, height: dotSize, borderRadius: 999, background: '#ff5f57' }} />
+        <span style={{ width: dotSize, height: dotSize, borderRadius: 999, background: '#ffbd2e' }} />
+        <span style={{ width: dotSize, height: dotSize, borderRadius: 999, background: '#28c840' }} />
         {isEditing ? (
           <input
             value={shape.props.title}
@@ -217,7 +223,7 @@ function CodeBlock({ shape, editor, isEditing }: { shape: CodeBlockShape; editor
       </div>
 
       {/* body: Monaco while editing, a static preview otherwise */}
-      <div style={{ width: '100%', height: Math.max(80, shape.props.h - 34) }}>
+      <div style={{ width: '100%', height: Math.max(40, shape.props.h - titleHeight) }}>
         {isEditing ? (
           <MonacoEditor
             height="100%"
@@ -230,7 +236,7 @@ function CodeBlock({ shape, editor, isEditing }: { shape: CodeBlockShape; editor
             options={{
               minimap: { enabled: false },
               fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontSize: 12,
+              fontSize: fontSize,
               lineNumbersMinChars: 3,
               padding: { top: 10, bottom: 10 },
               scrollBeyondLastLine: false,
@@ -250,7 +256,7 @@ function CodeBlock({ shape, editor, isEditing }: { shape: CodeBlockShape; editor
               overflow: 'hidden',
               color: dark ? '#e4e4e7' : '#27272a',
               fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontSize: 12,
+              fontSize: fontSize,
               lineHeight: 1.55,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',

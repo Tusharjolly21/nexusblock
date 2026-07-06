@@ -5,6 +5,10 @@ import { useDocStore } from '../store/useDocStore'
 import { useApp, selectCurrentFile } from '../store/useApp'
 import { useAuth } from '../store/useAuth'
 import { useComments } from '../store/useComments'
+import { useTheme, isDarkTone } from '../store/useTheme'
+import Picker from '@emoji-mart/react'
+import data from '@emoji-mart/data'
+import { notifyMention } from '../lib/ai'
 
 const isEditableTarget = (target: EventTarget | null) => {
   const node = target as HTMLElement | null
@@ -28,6 +32,7 @@ export function CommentPinLayer() {
   const email = useAuth((s) => s.email)
   const profileName = useApp((s) => s.profile?.name)
   const threads = useComments((s) => s.threadsByFile[fileId] ?? [])
+  const tone = useTheme((s) => s.tone)
   const addThread = useComments((s) => s.addThread)
   const updateThread = useComments((s) => s.updateThread)
   const deleteThread = useComments((s) => s.deleteThread)
@@ -37,6 +42,26 @@ export function CommentPinLayer() {
   const [draft, setDraft] = useState<{ x: number; y: number } | null>(null)
   const [draftText, setDraftText] = useState('')
   const [emojiOpen, setEmojiOpen] = useState(false)
+  const [mentionSearch, setMentionSearch] = useState<string | null>(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
+
+  const filteredMembers = MEMBERS.filter(m => 
+    m.username.toLowerCase().includes((mentionSearch || '').toLowerCase()) || 
+    m.name.toLowerCase().includes((mentionSearch || '').toLowerCase())
+  )
+
+  const selectMention = (member: typeof MEMBERS[0]) => {
+    const words = draftText.substring(0, draftText.length).split(/\s+/)
+    for (let i = words.length - 1; i >= 0; i--) {
+      if (words[i].startsWith('@')) {
+        words[i] = `@${member.username} `
+        break
+      }
+    }
+    const next = words.join(' ')
+    setDraftText(next)
+    setMentionSearch(null)
+  }
 
   // Re-render pins whenever the camera (pan/zoom) or viewport changes.
   useEffect(() => {
@@ -88,9 +113,23 @@ export function CommentPinLayer() {
       author: displayAuthor(profileName, authName, email),
       body: draftText.trim(),
     })
+
+    const matches = Array.from(draftText.matchAll(/@(\w+)/g)).map(m => m[1])
+    if (matches.length > 0) {
+      matches.forEach(recipient => {
+        notifyMention({
+          fileId,
+          sender: displayAuthor(profileName, authName, email),
+          recipient,
+          comment: draftText.trim()
+        }).catch(() => {})
+      })
+    }
+
     setDraft(null)
     setDraftText('')
     setEmojiOpen(false)
+    setMentionSearch(null)
     setOpenId(thread.id)
   }
 
@@ -142,22 +181,74 @@ export function CommentPinLayer() {
           <textarea
             autoFocus
             value={draftText}
-            onChange={(e) => setDraftText(e.currentTarget.value)}
+            onChange={(e) => {
+              const val = e.currentTarget.value
+              setDraftText(val)
+              const cursor = e.currentTarget.selectionStart
+              const beforeCursor = val.substring(0, cursor)
+              const words = beforeCursor.split(/\s+/)
+              const lastWord = words[words.length - 1]
+              if (lastWord.startsWith('@')) {
+                setMentionSearch(lastWord.substring(1))
+                setMentionIndex(0)
+              } else {
+                setMentionSearch(null)
+              }
+            }}
             onKeyDown={(e) => {
+              if (mentionSearch !== null && filteredMembers.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setMentionIndex((i) => (i + 1) % filteredMembers.length)
+                  return
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setMentionIndex((i) => (i - 1 + filteredMembers.length) % filteredMembers.length)
+                  return
+                }
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault()
+                  selectMention(filteredMembers[mentionIndex])
+                  return
+                }
+              }
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDraft() }
-              if (e.key === 'Escape') { setDraft(null); setDraftText('') }
+              if (e.key === 'Escape') { setDraft(null); setDraftText(''); setMentionSearch(null) }
             }}
             rows={2}
             placeholder="Add comment. Enter to send"
             className="w-full resize-none rounded-xl border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-grey-3 focus:border-ink"
           />
+          {mentionSearch !== null && filteredMembers.length > 0 && (
+            <div className="absolute left-2 bottom-12 z-30 w-48 rounded-xl border border-line bg-paper py-1 shadow-xl max-h-40 overflow-y-auto">
+              {filteredMembers.map((m, idx) => (
+                <button
+                  key={m.username}
+                  onClick={() => selectMention(m)}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex flex-col ${mentionIndex === idx ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold' : 'text-ink hover:bg-surface/50'}`}
+                >
+                  <span className="font-semibold text-ink">{m.name}</span>
+                  <span className="text-[10px] text-grey-3">@{m.username}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="mt-1.5 flex items-center justify-between">
             <div className="relative flex items-center gap-1">
               <button onClick={() => setEmojiOpen((v) => !v)} className="rounded-lg px-2 py-1 text-xs text-grey-3 hover:bg-grey-1 hover:text-ink" title="Add emoji">
                 <Icon icon="lucide:smile" width={14} />
               </button>
-              {emojiOpen && <EmojiPicker onPick={(emoji) => { setDraftText((v) => v + emoji); setEmojiOpen(false) }} />}
-              <button onClick={() => { setDraft(null); setDraftText(''); setEmojiOpen(false) }} className="rounded-lg px-2 py-1 text-xs text-grey-3 hover:text-ink">Cancel</button>
+              {emojiOpen && (
+                <EmojiPicker
+                  theme={isDarkTone(tone) ? 'dark' : 'light'}
+                  onPick={(emoji) => {
+                    setDraftText((v) => v + emoji)
+                    setEmojiOpen(false)
+                  }}
+                />
+              )}
+              <button onClick={() => { setDraft(null); setDraftText(''); setEmojiOpen(false); setMentionSearch(null) }} className="rounded-lg px-2 py-1 text-xs text-grey-3 hover:text-ink">Cancel</button>
             </div>
             <button onClick={submitDraft} disabled={!draftText.trim()} className="rounded-lg bg-ink px-3 py-1 text-xs font-semibold text-paper hover:opacity-90 disabled:opacity-40">Send</button>
           </div>
@@ -184,16 +275,16 @@ export function CommentPinLayer() {
   )
 }
 
-const COMMENT_EMOJIS = ['👍', '✅', '👀', '🔥', '💡', '🚀', '❤️', '🙏']
-
-function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
+function EmojiPicker({ onPick, theme }: { onPick: (emoji: string) => void; theme: 'light' | 'dark' }) {
   return (
-    <div className="absolute bottom-8 left-0 z-20 grid w-36 grid-cols-4 gap-1 rounded-xl border border-line bg-paper p-2 shadow-xl">
-      {COMMENT_EMOJIS.map((emoji) => (
-        <button key={emoji} onClick={() => onPick(emoji)} className="grid h-7 w-7 place-items-center rounded-lg text-base hover:bg-grey-1">
-          {emoji}
-        </button>
-      ))}
+    <div className="absolute bottom-8 left-0 z-20 shadow-xl rounded-xl overflow-hidden border border-line">
+      <Picker
+        data={data}
+        onEmojiSelect={(emoji: any) => onPick(emoji.native)}
+        theme={theme}
+        previewPosition="none"
+        skinTonePosition="none"
+      />
     </div>
   )
 }
@@ -225,7 +316,7 @@ function PinPopover({
         <span className="truncate text-xs font-semibold text-grey-4">{formatAuthor(author)}</span>
         <button onClick={onClose} className="rounded-md p-0.5 text-grey-3 hover:text-ink"><Icon icon="lucide:x" width={13} /></button>
       </div>
-      <p className="text-sm leading-relaxed text-ink">{body}</p>
+      <p className="text-sm leading-relaxed text-ink">{renderCommentBody(body)}</p>
       {canEdit && (
         <div className="mt-2.5 flex items-center justify-between">
           <button
@@ -239,4 +330,25 @@ function PinPopover({
       )}
     </div>
   )
+}
+
+const MEMBERS = [
+  { username: 'tushar', name: 'Tushar Jolly', email: 'tushar@nexusblock.io' },
+  { username: 'alex', name: 'Alex Rivera', email: 'alex@nexusblock.io' },
+  { username: 'sarah', name: 'Sarah Chen', email: 'sarah@nexusblock.io' },
+  { username: 'john', name: 'John Doe', email: 'john@nexusblock.io' },
+]
+
+function renderCommentBody(text: string) {
+  const parts = text.split(/(@\w+)/)
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      return (
+        <span key={i} className="inline-block px-1.5 py-0.5 rounded bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 font-semibold text-xs border border-blue-500/10 dark:border-blue-400/10 mx-0.5 animate-pulse">
+          {part}
+        </span>
+      )
+    }
+    return part
+  })
 }

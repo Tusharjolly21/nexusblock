@@ -1,0 +1,1767 @@
+diagram global_payment_processing "Global Payment Processing and Double-Entry Ledger Platform" {
+  type: architecture
+  direction: LR
+  layout: manual
+
+  canvas: {
+    width: 7600,
+    height: 3000,
+    background: "#151515",
+    grid: 24
+  }
+
+  catalog: {
+    category: "Payments",
+    difficulty: "Advanced",
+    provider: "Cloud Neutral",
+    tags: ["payments", "double-entry-ledger", "card-processing", "fraud", "reconciliation", "multi-region"],
+    animated: true,
+    editable: true
+  }
+
+  styles: {
+    user:       { fill: "#E8F0FE", stroke: "#4F46E5", text: "#111827" },
+    edge:       { fill: "#FFF7ED", stroke: "#EA580C", text: "#111827" },
+    security:   { fill: "#FFF1F2", stroke: "#E11D48", text: "#111827" },
+    compute:    { fill: "#ECFDF5", stroke: "#059669", text: "#111827" },
+    data:       { fill: "#F5F3FF", stroke: "#7C3AED", text: "#111827" },
+    stream:     { fill: "#ECFEFF", stroke: "#0891B2", text: "#111827" },
+    finance:    { fill: "#FFFBEB", stroke: "#D97706", text: "#111827" },
+    external:   { fill: "#FEF2F2", stroke: "#DC2626", text: "#111827" },
+    ops:        { fill: "#F3F4F6", stroke: "#4B5563", text: "#111827" }
+  }
+
+  group channels "Customers, Merchants and Operations" [
+    x: -1850,
+    y: -500,
+    width: 360,
+    height: 980
+  ] {
+    node customer "Customer" [
+      subtitle: "Web, Mobile or In-Store Buyer",
+      kind: client,
+      icon: lucide:user,
+      style: user,
+      x: 68,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node merchant_checkout "Merchant Checkout" [
+      subtitle: "Hosted Fields or Payment SDK",
+      kind: client,
+      icon: lucide:shopping-cart,
+      style: user,
+      x: 68,
+      y: 240,
+      width: 224,
+      height: 128
+    ]
+
+    node merchant_backend "Merchant Backend" [
+      subtitle: "Orders and Payment Intents",
+      kind: client,
+      icon: lucide:server,
+      style: user,
+      x: 68,
+      y: 432,
+      width: 224,
+      height: 128
+    ]
+
+    node merchant_ops "Merchant Operations" [
+      subtitle: "Refunds, Disputes and Reporting",
+      kind: client,
+      icon: lucide:briefcase-business,
+      style: user,
+      x: 68,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node finance_ops "Finance and Treasury Team" [
+      subtitle: "Settlement and Reconciliation",
+      kind: client,
+      icon: lucide:landmark,
+      style: user,
+      x: 68,
+      y: 816,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group global_edge "Global Edge and Merchant API Layer" [
+    x: -1050,
+    y: -500,
+    width: 1250,
+    height: 980
+  ] {
+    node global_dns "Anycast DNS" [
+      subtitle: "Latency and Health-Based Routing",
+      kind: network,
+      icon: lucide:globe-2,
+      style: edge,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node waf_ddos "WAF and DDoS Protection" [
+      subtitle: "Bot, Payload and Abuse Filtering",
+      kind: security,
+      icon: lucide:shield,
+      style: security,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node api_gateway "Payment API Gateway" [
+      subtitle: "REST, Webhooks and SDK Traffic",
+      kind: gateway,
+      icon: lucide:waypoints,
+      style: edge,
+      x: 800,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node merchant_auth "Merchant Authentication" [
+      subtitle: "API Keys, mTLS and OAuth Clients",
+      kind: authentication,
+      icon: lucide:badge-check,
+      style: security,
+      x: 224,
+      y: 320,
+      width: 224,
+      height: 128
+    ]
+
+    node distributed_rate_limiter "Distributed Rate Limiter" [
+      subtitle: "Merchant, Account and IP Quotas",
+      kind: security,
+      icon: lucide:gauge,
+      style: security,
+      x: 576,
+      y: 320,
+      width: 224,
+      height: 128
+    ]
+
+    node request_normalizer "Request Validation and Normalization" [
+      subtitle: "Schema, Currency and Amount Rules",
+      kind: service,
+      icon: lucide:list-checks,
+      style: compute,
+      x: 928,
+      y: 320,
+      width: 224,
+      height: 128
+    ]
+
+    node edge_token_cache "Authorization and Config Cache" [
+      subtitle: "Short-TTL Merchant and Routing State",
+      kind: cache,
+      icon: simple-icons:redis,
+      style: data,
+      x: 400,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node webhook_ingress "Provider Webhook Ingress" [
+      subtitle: "Signature Verification and Replay Defense",
+      kind: gateway,
+      icon: lucide:webhook,
+      style: edge,
+      x: 800,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group payment_control "Payment Control Plane" [
+    x: 500,
+    y: -500,
+    width: 1500,
+    height: 1180
+  ] {
+    node idempotency_service "Idempotency Service" [
+      subtitle: "Exactly-Once Effects per Merchant Key",
+      kind: service,
+      icon: lucide:copy-check,
+      style: compute,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node payment_orchestrator "Payment Orchestrator" [
+      subtitle: "Authorization, Capture, Refund and Void",
+      kind: service,
+      icon: lucide:workflow,
+      style: compute,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node payment_state_machine "Payment State Machine" [
+      subtitle: "Valid Transitions and Ambiguous Outcomes",
+      kind: workflow,
+      icon: lucide:git-branch,
+      style: compute,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node routing_engine "Processor Routing Engine" [
+      subtitle: "Cost, Success Rate, Currency and Health",
+      kind: service,
+      icon: lucide:route,
+      style: compute,
+      x: 1104,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node fraud_engine "Fraud and Risk Engine" [
+      subtitle: "Rules, Models, Velocity and Device Signals",
+      kind: security,
+      icon: lucide:shield-alert,
+      style: security,
+      x: 48,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node tokenization_service "Payment Method Tokenization" [
+      subtitle: "PAN Isolation and Network Tokens",
+      kind: security,
+      icon: lucide:credit-card,
+      style: security,
+      x: 400,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node three_ds_service "3-D Secure and SCA Service" [
+      subtitle: "Challenge, Exemption and Liability Shift",
+      kind: security,
+      icon: lucide:shield-check,
+      style: security,
+      x: 752,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node connector_manager "Connector Manager" [
+      subtitle: "Timeouts, Retries and Circuit Breakers",
+      kind: integration,
+      icon: lucide:plug-zap,
+      style: compute,
+      x: 1104,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node payment_repository "Payment Repository" [
+      subtitle: "Intent, Attempt and Provider Reference State",
+      kind: database,
+      icon: lucide:database,
+      style: data,
+      x: 224,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node idempotency_store "Idempotency Key Store" [
+      subtitle: "Request Hash, Result and Expiry",
+      kind: database,
+      icon: lucide:database-zap,
+      style: data,
+      x: 576,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node payment_outbox "Transactional Payment Outbox" [
+      subtitle: "Committed Events Awaiting Publication",
+      kind: database,
+      icon: lucide:outbox,
+      style: data,
+      x: 928,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node payment_event_bus "Payment Event Backbone" [
+      subtitle: "Partitioned by Payment or Merchant ID",
+      kind: event-bus,
+      icon: simple-icons:apachekafka,
+      style: stream,
+      x: 576,
+      y: 912,
+      width: 224,
+      height: 128
+    ]
+
+    node ambiguity_resolver "Ambiguous Outcome Resolver" [
+      subtitle: "Provider Query Before Safe Retry",
+      kind: reliability,
+      icon: lucide:search-check,
+      style: compute,
+      x: 928,
+      y: 912,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group pci_external "PCI Zone and External Payment Rails" [
+    x: 2350,
+    y: -500,
+    width: 1450,
+    height: 1180
+  ] {
+    node token_vault "Token Vault" [
+      subtitle: "Encrypted PAN and Token Mapping",
+      kind: security,
+      icon: lucide:vault,
+      style: security,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node hsm_cluster "HSM Cluster" [
+      subtitle: "PIN, Cryptogram and Key Operations",
+      kind: security,
+      icon: lucide:key-square,
+      style: security,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node network_token_provider "Network Token Provider" [
+      subtitle: "Card Network Token Lifecycle",
+      kind: external,
+      icon: lucide:badge-dollar-sign,
+      style: external,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node acquirer_connector_a "Primary Acquirer Connector" [
+      subtitle: "Authorization and Capture API",
+      kind: integration,
+      icon: lucide:plug,
+      style: external,
+      x: 48,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node acquirer_connector_b "Secondary Acquirer Connector" [
+      subtitle: "Failover and Regional Coverage",
+      kind: integration,
+      icon: lucide:plug,
+      style: external,
+      x: 400,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node card_network "Card Network" [
+      subtitle: "Scheme Routing and Rules",
+      kind: external,
+      icon: lucide:network,
+      style: external,
+      x: 752,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node issuer_bank "Issuing Bank" [
+      subtitle: "Account, Credit and Risk Decision",
+      kind: external,
+      icon: lucide:landmark,
+      style: external,
+      x: 1104,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node bank_transfer_rail "Bank Transfer Rail" [
+      subtitle: "ACH, SEPA, UPI or Faster Payments",
+      kind: external,
+      icon: lucide:arrow-left-right,
+      style: external,
+      x: 224,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node wallet_provider "Digital Wallet Provider" [
+      subtitle: "Wallet Token and Authorization",
+      kind: external,
+      icon: lucide:wallet-cards,
+      style: external,
+      x: 576,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node provider_status_store "Provider Status and Health Store" [
+      subtitle: "Latency, Errors and Circuit State",
+      kind: database,
+      icon: lucide:activity,
+      style: data,
+      x: 928,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node provider_callback_queue "Provider Callback Queue" [
+      subtitle: "Durable Asynchronous Status Updates",
+      kind: queue,
+      icon: lucide:list-restart,
+      style: stream,
+      x: 576,
+      y: 912,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group ledger_accounting "Immutable Accounting, Balances and Merchant Events" [
+    x: 4150,
+    y: -500,
+    width: 1550,
+    height: 1250
+  ] {
+    node ledger_command_service "Ledger Command Service" [
+      subtitle: "Validate Balanced Journal Transactions",
+      kind: service,
+      icon: lucide:notebook-tabs,
+      style: finance,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node journal_store "Immutable Journal Store" [
+      subtitle: "Append-Only Double-Entry Transactions",
+      kind: database,
+      icon: lucide:database-lock,
+      style: data,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node ledger_outbox "Transactional Ledger Outbox" [
+      subtitle: "Journal Events After Commit",
+      kind: database,
+      icon: lucide:outbox,
+      style: data,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node balance_projector "Balance Projection Workers" [
+      subtitle: "Available, Pending and Reserved Balances",
+      kind: compute,
+      icon: lucide:calculator,
+      style: compute,
+      x: 1104,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node balance_store "Balance Projection Store" [
+      subtitle: "Rebuildable Read-Optimized Balances",
+      kind: database,
+      icon: lucide:database-zap,
+      style: data,
+      x: 1104,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node merchant_event_service "Merchant Event Service" [
+      subtitle: "Canonical Events and Delivery Policy",
+      kind: service,
+      icon: lucide:radio-tower,
+      style: compute,
+      x: 48,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node webhook_delivery "Webhook Delivery Workers" [
+      subtitle: "Signed Payloads, Retries and Backoff",
+      kind: notification,
+      icon: lucide:webhook,
+      style: compute,
+      x: 400,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node webhook_delivery_store "Webhook Delivery Store" [
+      subtitle: "Attempts, Responses and Replay State",
+      kind: database,
+      icon: lucide:database-clock,
+      style: data,
+      x: 752,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node dispute_service "Dispute and Chargeback Service" [
+      subtitle: "Evidence, Deadlines and Provisional Entries",
+      kind: service,
+      icon: lucide:gavel,
+      style: finance,
+      x: 48,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node refund_service "Refund Service" [
+      subtitle: "Partial, Full and Reversal Workflows",
+      kind: service,
+      icon: lucide:rotate-ccw,
+      style: finance,
+      x: 400,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node reporting_store "Merchant Reporting Store" [
+      subtitle: "Searchable Payments and Payout Views",
+      kind: database,
+      icon: lucide:chart-no-axes-combined,
+      style: data,
+      x: 752,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node event_archive "Financial Event Archive" [
+      subtitle: "Immutable Long-Term Event History",
+      kind: storage,
+      icon: lucide:archive,
+      style: data,
+      x: 1104,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node webhook_dlq "Webhook Dead-Letter Queue" [
+      subtitle: "Exhausted Merchant Deliveries",
+      kind: queue,
+      icon: lucide:mail-warning,
+      style: stream,
+      x: 400,
+      y: 912,
+      width: 224,
+      height: 128
+    ]
+
+    node ledger_verifier "Ledger Invariant Verifier" [
+      subtitle: "Debits Equal Credits and Sequence Checks",
+      kind: reliability,
+      icon: lucide:badge-check,
+      style: finance,
+      x: 928,
+      y: 912,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group settlement_reconciliation "Clearing, Settlement and Reconciliation" [
+    x: 4150,
+    y: 950,
+    width: 1550,
+    height: 950
+  ] {
+    node settlement_scheduler "Settlement Scheduler" [
+      subtitle: "Cutoffs, Holidays and Payout Windows",
+      kind: workflow,
+      icon: lucide:calendar-clock,
+      style: finance,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node payout_service "Merchant Payout Service" [
+      subtitle: "Net Settlement and Reserve Policy",
+      kind: service,
+      icon: lucide:hand-coins,
+      style: finance,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node treasury_accounts "Treasury Bank Accounts" [
+      subtitle: "Safeguarding, Clearing and Operating Accounts",
+      kind: external,
+      icon: lucide:landmark,
+      style: external,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node settlement_file_ingest "Settlement File Ingestion" [
+      subtitle: "Processor and Bank Reports",
+      kind: service,
+      icon: lucide:file-down,
+      style: compute,
+      x: 1104,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node reconciliation_engine "Reconciliation Engine" [
+      subtitle: "Internal, Processor and Bank Matching",
+      kind: service,
+      icon: lucide:scale,
+      style: finance,
+      x: 224,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node reconciliation_store "Reconciliation Store" [
+      subtitle: "Matches, Exceptions and Resolution State",
+      kind: database,
+      icon: lucide:database,
+      style: data,
+      x: 576,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node exception_queue "Financial Exception Queue" [
+      subtitle: "Missing, Duplicate and Amount Mismatches",
+      kind: queue,
+      icon: lucide:triangle-alert,
+      style: stream,
+      x: 928,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node finance_case_manager "Finance Case Manager" [
+      subtitle: "Manual Investigation and Evidence",
+      kind: service,
+      icon: lucide:folder-search,
+      style: compute,
+      x: 576,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group continuity "Regional Continuity and Write Fencing" [
+    x: 6000,
+    y: -500,
+    width: 1350,
+    height: 1020
+  ] {
+    node payment_home_region "Payment Home Region Directory" [
+      subtitle: "Merchant and Payment Write Affinity",
+      kind: database,
+      icon: lucide:map-pinned,
+      style: data,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node change_capture "Payment and Ledger Change Capture" [
+      subtitle: "Replayable Cross-Region Commit Stream",
+      kind: stream,
+      icon: lucide:refresh-cw,
+      style: stream,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node replication_pipeline "Asynchronous Replication Pipeline" [
+      subtitle: "Ordered Durable Regional Replication",
+      kind: stream,
+      icon: lucide:refresh-ccw,
+      style: stream,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node secondary_payment_store "Warm Secondary Payment Store" [
+      subtitle: "Replicated Attempts and Provider References",
+      kind: database,
+      icon: lucide:database-backup,
+      style: data,
+      x: 1048,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node secondary_journal_store "Warm Secondary Journal Store" [
+      subtitle: "Replicated Immutable Ledger Journal",
+      kind: database,
+      icon: lucide:book-lock,
+      style: data,
+      x: 224,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node writer_epoch_guard "Writer Epoch and Fencing Guard" [
+      subtitle: "Single Active Ledger Writer",
+      kind: security,
+      icon: lucide:shield-ban,
+      style: security,
+      x: 576,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node failover_controller "Regional Failover Controller" [
+      subtitle: "Health, Quorum and Recovery Runbook",
+      kind: reliability,
+      icon: lucide:heart-pulse,
+      style: ops,
+      x: 928,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node recovery_replayer "Recovery and Outbox Replayer" [
+      subtitle: "Resume Unpublished and Ambiguous Work",
+      kind: reliability,
+      icon: lucide:history,
+      style: ops,
+      x: 400,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node provider_reconciliation_guard "Provider Reconciliation Guard" [
+      subtitle: "Query External Status Before Replay",
+      kind: reliability,
+      icon: lucide:search-check,
+      style: ops,
+      x: 752,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group operations "Observability, Security and Governance" [
+    x: 6000,
+    y: 750,
+    width: 1350,
+    height: 1150
+  ] {
+    node telemetry_collector "OpenTelemetry Collectors" [
+      subtitle: "Traces, Metrics and Structured Logs",
+      kind: observability,
+      icon: simple-icons:opentelemetry,
+      style: ops,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node metrics_store "Metrics and SLO Store" [
+      subtitle: "Latency, Success Rate and Saturation",
+      kind: observability,
+      icon: simple-icons:prometheus,
+      style: ops,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node dashboards "Operations Dashboards" [
+      subtitle: "Payments, Ledger and Provider Health",
+      kind: observability,
+      icon: simple-icons:grafana,
+      style: ops,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node alerting "SLO and Financial Integrity Alerts" [
+      subtitle: "Burn Rate, Imbalance and Reconciliation Lag",
+      kind: notification,
+      icon: lucide:bell-ring,
+      style: ops,
+      x: 1048,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node audit_archive "Tamper-Evident Audit Archive" [
+      subtitle: "Administrative and Financial Control Events",
+      kind: storage,
+      icon: lucide:archive-restore,
+      style: ops,
+      x: 224,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node secrets_manager "Secrets and Certificate Manager" [
+      subtitle: "Provider Credentials and Webhook Keys",
+      kind: security,
+      icon: lucide:key-round,
+      style: security,
+      x: 576,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node access_control "Privileged Access Control" [
+      subtitle: "Least Privilege and Break-Glass Access",
+      kind: security,
+      icon: lucide:user-lock,
+      style: security,
+      x: 928,
+      y: 336,
+      width: 224,
+      height: 128
+    ]
+
+    node compliance_policy "Compliance Policy Engine" [
+      subtitle: "PCI, Retention, Residency and PII Controls",
+      kind: governance,
+      icon: lucide:scroll-text,
+      style: ops,
+      x: 224,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node capacity_controller "Capacity and Partition Controller" [
+      subtitle: "Autoscaling, Hot Merchants and Stream Lag",
+      kind: reliability,
+      icon: lucide:sliders-horizontal,
+      style: ops,
+      x: 576,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node synthetic_payments "Synthetic Payment Probes" [
+      subtitle: "End-to-End Provider and Webhook Checks",
+      kind: observability,
+      icon: lucide:flask-conical,
+      style: ops,
+      x: 928,
+      y: 624,
+      width: 224,
+      height: 128
+    ]
+
+    node incident_timeline "Incident and Change Timeline" [
+      subtitle: "Deployments, Incidents and Provider Events",
+      kind: observability,
+      icon: lucide:clock-3,
+      style: ops,
+      x: 576,
+      y: 912,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  edge e01 customer -> merchant_checkout [
+    label: "Enter payment method and approve purchase",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e02 merchant_checkout -> merchant_backend [
+    label: "Create order and payment request",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e03 merchant_backend -> global_dns [
+    label: "Create or confirm payment intent",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e04 merchant_ops -> global_dns [
+    label: "Refund, dispute and reporting actions",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e05 global_dns -> waf_ddos [
+    label: "Route to nearest healthy region",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e06 waf_ddos -> api_gateway [
+    label: "Forward accepted request",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e07 api_gateway -> merchant_auth [
+    label: "Authenticate merchant and client",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e08 merchant_auth -> edge_token_cache [
+    label: "Read cached merchant authorization",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e09 api_gateway -> distributed_rate_limiter [
+    label: "Enforce merchant and account quotas",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e10 distributed_rate_limiter -> request_normalizer [
+    label: "Validate accepted request",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e11 request_normalizer -> idempotency_service [
+    label: "Submit normalized operation",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e12 idempotency_service -> idempotency_store [
+    label: "Check request hash and stored result",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e13 idempotency_service -> payment_orchestrator [
+    label: "Execute new operation only once",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e14 payment_orchestrator -> payment_state_machine [
+    label: "Validate requested state transition",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e15 payment_orchestrator -> fraud_engine [
+    label: "Evaluate payment risk",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e16 fraud_engine -> payment_orchestrator [
+    label: "Approve, challenge, review or block",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e17 payment_orchestrator -> tokenization_service [
+    label: "Resolve tokenized payment method",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e18 tokenization_service -> token_vault [
+    label: "Store or resolve PAN token mapping",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e19 token_vault -> hsm_cluster [
+    label: "Perform protected cryptographic operation",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e20 tokenization_service -> network_token_provider [
+    label: "Provision or refresh network token",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e21 payment_orchestrator -> three_ds_service [
+    label: "Perform SCA or 3-D Secure when required",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e22 three_ds_service -> merchant_checkout [
+    label: "Run customer challenge or frictionless flow",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e23 payment_orchestrator -> routing_engine [
+    label: "Select eligible processor route",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e24 routing_engine -> provider_status_store [
+    label: "Read connector health and success metrics",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e25 routing_engine -> connector_manager [
+    label: "Provide ranked connector candidates",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e26 connector_manager -> acquirer_connector_a [
+    label: "Send primary authorization request",
+    kind: sync,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e27 connector_manager -> acquirer_connector_b [
+    label: "Fail over only when outcome is known safe",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e28 connector_manager -> wallet_provider [
+    label: "Submit wallet authorization",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e29 connector_manager -> bank_transfer_rail [
+    label: "Create bank transfer instruction",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e30 acquirer_connector_a -> card_network [
+    label: "Route authorization through card scheme",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e31 acquirer_connector_b -> card_network [
+    label: "Route alternate authorization",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e32 card_network -> issuer_bank [
+    label: "Request issuer decision",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e33 issuer_bank -> card_network [
+    label: "Return approval, decline or challenge",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e34 card_network -> acquirer_connector_a [
+    label: "Return authorization result",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e35 acquirer_connector_a -> connector_manager [
+    label: "Return normalized provider response",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e36 connector_manager -> payment_orchestrator [
+    label: "Return provider result and reference",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e37 connector_manager -> ambiguity_resolver [
+    label: "Escalate timeout or unknown provider outcome",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e38 ambiguity_resolver -> acquirer_connector_a [
+    label: "Query status before any retry",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e39 webhook_ingress -> provider_callback_queue [
+    label: "Enqueue verified asynchronous callback",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e40 provider_callback_queue -> payment_orchestrator [
+    label: "Apply provider state update idempotently",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e41 payment_orchestrator -> payment_repository [
+    label: "Persist intent, attempt and provider reference",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e42 payment_orchestrator -> payment_outbox [
+    label: "Commit canonical payment event with state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e43 payment_outbox -> payment_event_bus [
+    label: "Publish committed payment event",
+    kind: event,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e44 payment_orchestrator -> idempotency_service [
+    label: "Store final response for safe client retries",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e45 payment_event_bus -> ledger_command_service [
+    label: "Translate financial event into journal command",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e46 ledger_command_service -> journal_store [
+    label: "Append balanced debit and credit entries",
+    kind: data,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e47 ledger_command_service -> ledger_outbox [
+    label: "Commit journal event with transaction",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e48 ledger_outbox -> payment_event_bus [
+    label: "Publish immutable ledger event",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e49 payment_event_bus -> balance_projector [
+    label: "Project merchant and platform balances",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e50 balance_projector -> balance_store [
+    label: "Update rebuildable balance views",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e51 payment_event_bus -> merchant_event_service [
+    label: "Consume canonical merchant-facing events",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e52 merchant_event_service -> webhook_delivery_store [
+    label: "Create signed delivery attempt",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e53 merchant_event_service -> webhook_delivery [
+    label: "Queue merchant webhook",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e54 webhook_delivery -> merchant_backend [
+    label: "Deliver signed payment event",
+    kind: async,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e55 webhook_delivery -> webhook_delivery_store [
+    label: "Record response and next retry",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e56 webhook_delivery -> webhook_dlq [
+    label: "Move exhausted delivery after policy limit",
+    kind: failure,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e57 payment_event_bus -> reporting_store [
+    label: "Build searchable merchant reporting views",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e58 payment_event_bus -> event_archive [
+    label: "Archive canonical financial event history",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e59 merchant_ops -> refund_service [
+    label: "Create partial or full refund",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e60 refund_service -> payment_orchestrator [
+    label: "Execute provider refund workflow",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e61 merchant_ops -> dispute_service [
+    label: "Submit evidence or review chargeback",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e62 dispute_service -> ledger_command_service [
+    label: "Post provisional or final dispute entries",
+    kind: finance,
+    route: orthogonal
+  ]
+
+  edge e63 dispute_service -> event_archive [
+    label: "Archive evidence and deadline events",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e64 ledger_verifier -> journal_store [
+    label: "Continuously verify balance and sequence invariants",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e65 settlement_scheduler -> balance_store [
+    label: "Read payable merchant balance",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e66 settlement_scheduler -> payout_service [
+    label: "Create payout batch at eligible cutoff",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e67 payout_service -> treasury_accounts [
+    label: "Submit merchant payout instruction",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e68 payout_service -> ledger_command_service [
+    label: "Record payout and reserve movements",
+    kind: finance,
+    route: orthogonal
+  ]
+
+  edge e69 settlement_file_ingest -> reconciliation_engine [
+    label: "Provide processor and bank settlement rows",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e70 journal_store -> reconciliation_engine [
+    label: "Provide internal financial journal entries",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e71 payment_repository -> reconciliation_engine [
+    label: "Provide provider references and payment attempts",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e72 reconciliation_engine -> reconciliation_store [
+    label: "Store matches and exception state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e73 reconciliation_engine -> exception_queue [
+    label: "Publish unresolved financial exception",
+    kind: failure,
+    route: orthogonal
+  ]
+
+  edge e74 exception_queue -> finance_case_manager [
+    label: "Open investigation case",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e75 finance_ops -> finance_case_manager [
+    label: "Investigate and resolve exception",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e76 finance_case_manager -> reconciliation_store [
+    label: "Record resolution and evidence",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e77 payment_repository -> change_capture [
+    label: "Capture committed payment changes",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e78 journal_store -> change_capture [
+    label: "Capture committed journal changes",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e79 change_capture -> replication_pipeline [
+    label: "Replicate ordered commit stream",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e80 replication_pipeline -> secondary_payment_store [
+    label: "Apply payment state to warm region",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e81 replication_pipeline -> secondary_journal_store [
+    label: "Apply immutable journal to warm region",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e82 api_gateway -> payment_home_region [
+    label: "Resolve authoritative write region",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e83 failover_controller -> writer_epoch_guard [
+    label: "Issue new writer epoch after fencing",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e84 failover_controller -> global_dns [
+    label: "Shift merchant traffic after recovery checks",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e85 writer_epoch_guard -> secondary_journal_store [
+    label: "Permit single active journal writer",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e86 secondary_payment_store -> recovery_replayer [
+    label: "Provide replicated payment and outbox state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e87 secondary_journal_store -> recovery_replayer [
+    label: "Provide replicated journal and sequence state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e88 recovery_replayer -> provider_reconciliation_guard [
+    label: "Inspect ambiguous external operations",
+    kind: reliability,
+    route: orthogonal
+  ]
+
+  edge e89 provider_reconciliation_guard -> acquirer_connector_a [
+    label: "Query provider before replaying side effect",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e90 recovery_replayer -> payment_event_bus [
+    label: "Resume unpublished committed events",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e91 api_gateway -> telemetry_collector [
+    label: "API latency, errors and merchant dimensions",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e92 payment_orchestrator -> telemetry_collector [
+    label: "Payment lifecycle traces and outcome metrics",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e93 connector_manager -> telemetry_collector [
+    label: "Provider latency, timeouts and circuit state",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e94 ledger_command_service -> telemetry_collector [
+    label: "Journal commit latency and invariant metrics",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e95 reconciliation_engine -> telemetry_collector [
+    label: "Reconciliation lag and unmatched amount",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e96 telemetry_collector -> metrics_store [
+    label: "Export metrics, logs and exemplars",
+    kind: observability,
+    route: orthogonal
+  ]
+
+  edge e97 metrics_store -> dashboards [
+    label: "Query operational and financial dashboards",
+    kind: observability,
+    route: orthogonal
+  ]
+
+  edge e98 metrics_store -> alerting [
+    label: "Evaluate SLO, integrity and settlement alerts",
+    kind: notification,
+    route: orthogonal
+  ]
+
+  edge e99 merchant_auth -> audit_archive [
+    label: "Record authentication and privilege changes",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e100 ledger_command_service -> audit_archive [
+    label: "Record privileged ledger correction controls",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e101 secrets_manager -> connector_manager [
+    label: "Provide rotated provider credentials",
+    kind: security,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e102 access_control -> merchant_ops [
+    label: "Enforce privileged operations permissions",
+    kind: security,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e103 compliance_policy -> token_vault [
+    label: "Apply PCI scope and retention policy",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e104 compliance_policy -> event_archive [
+    label: "Apply retention, residency and legal hold",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e105 capacity_controller -> api_gateway [
+    label: "Scale edge capacity by traffic and saturation",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e106 capacity_controller -> payment_event_bus [
+    label: "Rebalance partitions and hot merchants",
+    kind: reliability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e107 synthetic_payments -> global_dns [
+    label: "Run controlled end-to-end payment probes",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e108 synthetic_payments -> webhook_delivery [
+    label: "Verify merchant event delivery path",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e109 incident_timeline -> dashboards [
+    label: "Overlay deployments, incidents and provider events",
+    kind: observability,
+    route: orthogonal
+  ]
+
+  animation card_authorization_and_ledger_commit {
+    step 1 [
+      activate: [customer, merchant_checkout, merchant_backend, global_dns, waf_ddos, api_gateway],
+      edges: [e01, e02, e03, e05, e06],
+      narration: "The customer confirms the purchase, and the merchant creates a payment intent through the protected regional API edge."
+    ]
+
+    step 2 [
+      activate: [merchant_auth, distributed_rate_limiter, request_normalizer, idempotency_service, idempotency_store],
+      edges: [e07, e09, e10, e11, e12],
+      narration: "The platform authenticates the merchant, applies quotas, validates the request and checks the idempotency key before any external side effect."
+    ]
+
+    step 3 [
+      activate: [payment_orchestrator, payment_state_machine, fraud_engine, tokenization_service, token_vault, hsm_cluster],
+      edges: [e13, e14, e15, e16, e17, e18, e19],
+      narration: "The orchestrator validates the state transition, evaluates risk and resolves the tokenized payment method inside the PCI-controlled boundary."
+    ]
+
+    step 4 [
+      activate: [routing_engine, provider_status_store, connector_manager, acquirer_connector_a, card_network, issuer_bank],
+      edges: [e23, e24, e25, e26, e30, e32, e33, e34, e35, e36],
+      effect: stream-packet,
+      narration: "The routing engine chooses the best healthy processor, and the authorization travels through the acquirer, card network and issuing bank."
+    ]
+
+    step 5 [
+      activate: [payment_orchestrator, payment_repository, payment_outbox, idempotency_service],
+      edges: [e41, e42, e44],
+      narration: "The canonical payment result, provider reference and outbound event are committed before the response is stored for safe merchant retries."
+    ]
+
+    step 6 [
+      activate: [payment_outbox, payment_event_bus, ledger_command_service, journal_store, ledger_outbox],
+      edges: [e43, e45, e46, e47, e48],
+      effect: data-flow,
+      narration: "The committed payment event produces a balanced double-entry journal transaction and a separately published immutable ledger event."
+    ]
+
+    step 7 [
+      activate: [payment_event_bus, balance_projector, balance_store, merchant_event_service, webhook_delivery, merchant_backend],
+      edges: [e49, e50, e51, e53, e54],
+      narration: "Balance projections update asynchronously while the merchant receives a signed webhook describing the final payment state."
+    ]
+  }
+
+  animation ambiguous_timeout_and_safe_recovery {
+    step 1 [
+      activate: [connector_manager, acquirer_connector_a, ambiguity_resolver],
+      edges: [e26, e37],
+      narration: "The processor request times out after transmission, so the outcome is unknown rather than safely failed."
+    ]
+
+    step 2 [
+      activate: [ambiguity_resolver, acquirer_connector_a, provider_status_store],
+      edges: [e38, e24],
+      effect: data-flow,
+      narration: "The ambiguity resolver queries the original processor using the provider reference before attempting any alternate route."
+    ]
+
+    step 3 [
+      activate: [webhook_ingress, provider_callback_queue, payment_orchestrator, payment_repository],
+      edges: [e39, e40, e41],
+      narration: "A delayed provider callback is verified, queued and applied idempotently to the existing payment attempt."
+    ]
+
+    step 4 [
+      activate: [payment_outbox, payment_event_bus, ledger_command_service, journal_store],
+      edges: [e43, e45, e46],
+      narration: "Only the resolved canonical result is published and posted to the ledger, preventing duplicate authorization or duplicate accounting."
+    ]
+  }
+
+  animation settlement_and_reconciliation {
+    step 1 [
+      activate: [settlement_scheduler, balance_store, payout_service, treasury_accounts],
+      edges: [e65, e66, e67],
+      narration: "At the merchant cutoff, the settlement scheduler reads eligible balances and creates a payout instruction through the treasury account."
+    ]
+
+    step 2 [
+      activate: [payout_service, ledger_command_service, journal_store],
+      edges: [e68, e46],
+      narration: "The payout is reflected as balanced financial movements in the immutable journal."
+    ]
+
+    step 3 [
+      activate: [settlement_file_ingest, reconciliation_engine, journal_store, payment_repository],
+      edges: [e69, e70, e71],
+      effect: data-flow,
+      narration: "Processor and bank settlement files are matched against internal payment attempts and ledger entries."
+    ]
+
+    step 4 [
+      activate: [reconciliation_engine, reconciliation_store, exception_queue, finance_case_manager, finance_ops],
+      edges: [e72, e73, e74, e75],
+      narration: "Matched rows close automatically; missing, duplicate or amount-mismatched rows create finance investigation cases."
+    ]
+  }
+
+  animation regional_failover_with_write_fencing {
+    step 1 [
+      activate: [payment_repository, journal_store, change_capture, replication_pipeline, secondary_payment_store, secondary_journal_store],
+      edges: [e77, e78, e79, e80, e81],
+      narration: "Committed payment and journal changes continuously replicate to a warm secondary region through an ordered replayable stream."
+    ]
+
+    step 2 [
+      activate: [failover_controller, writer_epoch_guard, global_dns],
+      edges: [e83, e84],
+      narration: "After health, replication and fencing checks, the failover controller issues a new writer epoch and shifts traffic."
+    ]
+
+    step 3 [
+      activate: [writer_epoch_guard, secondary_journal_store, secondary_payment_store, recovery_replayer],
+      edges: [e85, e86, e87],
+      narration: "The secondary region becomes the single permitted financial writer and reconstructs pending outbox work from replicated state."
+    ]
+
+    step 4 [
+      activate: [recovery_replayer, provider_reconciliation_guard, acquirer_connector_a, payment_event_bus],
+      edges: [e88, e89, e90],
+      effect: data-flow,
+      narration: "Before replaying ambiguous operations, the platform queries external providers, then resumes only committed unpublished events."
+    ]
+  }
+}

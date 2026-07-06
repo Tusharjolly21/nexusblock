@@ -1,0 +1,822 @@
+diagram aws_vod_original "AWS Video-on-Demand Architecture" {
+  type: architecture
+  direction: LR
+  layout: manual
+
+  canvas: {
+    width: 6340,
+    height: 2269,
+    background: "#151515",
+    grid: 24
+  }
+
+  catalog: {
+    category: "Streaming",
+    difficulty: "Advanced",
+    provider: "AWS",
+    tags: ["video-on-demand", "media-processing", "cloudfront", "mediaconvert", "analytics"],
+    animated: true,
+    editable: true
+  }
+
+  styles: {
+    user:    { fill: "#E8F0FE", stroke: "#4F46E5", text: "#111827" },
+    edge:    { fill: "#FFF7ED", stroke: "#EA580C", text: "#111827" },
+    compute: { fill: "#ECFDF5", stroke: "#059669", text: "#111827" },
+    data:    { fill: "#F5F3FF", stroke: "#7C3AED", text: "#111827" },
+    media:   { fill: "#FEF2F2", stroke: "#DC2626", text: "#111827" },
+    ops:     { fill: "#F3F4F6", stroke: "#4B5563", text: "#111827" }
+  }
+
+  group users "Users and Client Applications" [
+    x: -1680,
+    y: -386,
+    width: 320,
+    height: 608
+  ] {
+    node content_admin "Content Admin / Studio" [
+      kind: client,
+      icon: lucide:clapperboard,
+      style: user,
+      x: 48,
+      y: 432,
+      width: 224,
+      height: 128
+    ]
+
+    node viewers "Web, Mobile and Smart TV Viewers" [
+      kind: client,
+      icon: lucide:monitor-smartphone,
+      style: user,
+      x: 48,
+      y: 240,
+      width: 224,
+      height: 128
+    ]
+
+    node video_player "Adaptive Bitrate Video Player" [
+      kind: client,
+      icon: lucide:circle-play,
+      style: user,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group edge_access "AWS Edge and Access Layer" [
+    x: -665,
+    y: -249,
+    width: 1184,
+    height: 622
+  ] {
+    node route53 "Amazon Route 53" [
+      kind: network,
+      icon: aws:route53,
+      style: edge,
+      x: 48,
+      y: 122,
+      width: 224,
+      height: 128
+    ]
+
+    node waf_shield "AWS WAF + Shield" [
+      kind: security,
+      icon: aws:waf,
+      style: edge,
+      x: 496,
+      y: 105,
+      width: 224,
+      height: 128
+    ]
+
+    node cloudfront "Amazon CloudFront CDN" [
+      kind: delivery,
+      icon: aws:cloudfront,
+      style: edge,
+      x: 912,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node cognito "Amazon Cognito" [
+      kind: authentication,
+      icon: aws:cognito,
+      style: edge,
+      x: 48,
+      y: 314,
+      width: 224,
+      height: 128
+    ]
+
+    node api_gateway "Amazon API Gateway" [
+      kind: gateway,
+      icon: aws:api-gateway,
+      style: edge,
+      x: 496,
+      y: 418,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group control_plane "Application and Control Plane" [
+    x: 1488,
+    y: -10,
+    width: 736,
+    height: 808
+  ] {
+    node upload_service "Lambda Upload Service" [
+      subtitle: "Presigned Multipart URLs",
+      kind: compute,
+      icon: aws:lambda,
+      style: compute,
+      x: 464,
+      y: 550,
+      width: 224,
+      height: 128
+    ]
+
+    node playback_authorization "Lambda Playback Authorization" [
+      subtitle: "Signed URL / Cookie",
+      kind: compute,
+      icon: aws:lambda,
+      style: compute,
+      x: 48,
+      y: 240,
+      width: 224,
+      height: 128
+    ]
+
+    node catalog_api "Lambda Catalog API" [
+      kind: compute,
+      icon: aws:lambda,
+      style: compute,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node video_metadata "Amazon DynamoDB" [
+      subtitle: "Video Metadata, Status, Entitlements",
+      kind: database,
+      icon: aws:dynamodb,
+      style: data,
+      x: 464,
+      y: 358,
+      width: 224,
+      height: 128
+    ]
+
+    node secrets_manager "AWS Secrets Manager" [
+      kind: security,
+      icon: aws:secrets-manager,
+      style: data,
+      x: 48,
+      y: 599,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group media_ingest "Secure Media Ingest" [
+    x: -912,
+    y: 1055,
+    width: 2048,
+    height: 389
+  ] {
+    node source_bucket "Amazon S3 Source Bucket" [
+      subtitle: "Original Masters",
+      kind: storage,
+      icon: aws:s3,
+      style: data,
+      x: 144,
+      y: 116,
+      width: 224,
+      height: 128
+    ]
+
+    node eventbridge "Amazon EventBridge" [
+      subtitle: "Object Created Event",
+      kind: event-bus,
+      icon: aws:eventbridge,
+      style: compute,
+      x: 528,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node processing_workflow "AWS Step Functions" [
+      subtitle: "VOD Processing Workflow",
+      kind: workflow,
+      icon: aws:step-functions,
+      style: compute,
+      x: 976,
+      y: 121,
+      width: 224,
+      height: 128
+    ]
+
+    node media_validation "AWS Lambda" [
+      subtitle: "Validate, Probe, Normalize Metadata",
+      kind: compute,
+      icon: aws:lambda,
+      style: compute,
+      x: 1392,
+      y: 172,
+      width: 224,
+      height: 128
+    ]
+
+    node processing_dlq "Amazon SQS Dead-Letter Queue" [
+      kind: queue,
+      icon: aws:sqs,
+      style: data,
+      x: 1776,
+      y: 124,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group processing "Media Processing Pipeline" [
+    x: 2800,
+    y: 896,
+    width: 1216,
+    height: 642
+  ] {
+    node media_convert "AWS Elemental MediaConvert" [
+      subtitle: "QVBR + ABR Transcoding",
+      kind: media,
+      icon: aws:mediaconvert,
+      style: media,
+      x: 144,
+      y: 433,
+      width: 224,
+      height: 128
+    ]
+
+    node renditions "HLS, DASH and MP4 Renditions" [
+      subtitle: "240p to 4K",
+      kind: media,
+      icon: lucide:layers-3,
+      style: media,
+      x: 528,
+      y: 241,
+      width: 224,
+      height: 128
+    ]
+
+    node media_assets "Thumbnails, Posters, Captions" [
+      subtitle: "Preview Clips",
+      kind: media,
+      icon: lucide:images,
+      style: media,
+      x: 528,
+      y: 433,
+      width: 224,
+      height: 128
+    ]
+
+    node distribution_bucket "Amazon S3 Distribution Bucket" [
+      subtitle: "Versioned Packaged Assets",
+      kind: storage,
+      icon: aws:s3,
+      style: data,
+      x: 944,
+      y: 177,
+      width: 224,
+      height: 128
+    ]
+
+    node kms "AWS KMS" [
+      subtitle: "Encryption Keys",
+      kind: security,
+      icon: aws:kms,
+      style: data,
+      x: 528,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group delivery "Global Playback and Product Experience" [
+    x: 1488,
+    y: -524,
+    width: 1024,
+    height: 416
+  ] {
+    node origin_access_control "CloudFront Origin Access Control" [
+      kind: security,
+      icon: aws:cloudfront,
+      style: edge,
+      x: 400,
+      y: 240,
+      width: 224,
+      height: 128
+    ]
+
+    node origin_shield "CloudFront Origin Shield" [
+      kind: delivery,
+      icon: aws:cloudfront,
+      style: edge,
+      x: 48,
+      y: 240,
+      width: 224,
+      height: 128
+    ]
+
+    node playback_events "Playback Events API" [
+      kind: analytics,
+      icon: lucide:activity,
+      style: compute,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node data_firehose "Amazon Data Firehose" [
+      kind: stream,
+      icon: aws:data-firehose,
+      style: compute,
+      x: 400,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node analytics_lake "Amazon S3 Analytics Lake" [
+      kind: storage,
+      icon: aws:s3,
+      style: data,
+      x: 752,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  group operations "Operations, Reliability and Governance" [
+    x: -2096,
+    y: 738,
+    width: 736,
+    height: 866
+  ] {
+    node cloudwatch "Amazon CloudWatch" [
+      subtitle: "Metrics, Logs and Alarms",
+      kind: observability,
+      icon: aws:cloudwatch,
+      style: ops,
+      x: 48,
+      y: 690,
+      width: 224,
+      height: 128
+    ]
+
+    node sns "Amazon SNS" [
+      subtitle: "Processing and Failure Notifications",
+      kind: notification,
+      icon: aws:sns,
+      style: ops,
+      x: 464,
+      y: 515,
+      width: 224,
+      height: 128
+    ]
+
+    node xray "AWS X-Ray" [
+      subtitle: "Request Tracing",
+      kind: observability,
+      icon: aws:xray,
+      style: ops,
+      x: 48,
+      y: 48,
+      width: 224,
+      height: 128
+    ]
+
+    node cloudtrail "AWS CloudTrail" [
+      subtitle: "Audit Events",
+      kind: governance,
+      icon: aws:cloudtrail,
+      style: ops,
+      x: 48,
+      y: 241,
+      width: 224,
+      height: 128
+    ]
+
+    node iam "AWS IAM" [
+      subtitle: "Least-Privilege Roles",
+      kind: security,
+      icon: aws:iam,
+      style: ops,
+      x: 48,
+      y: 433,
+      width: 224,
+      height: 128
+    ]
+  }
+
+  edge e01 content_admin -> cognito [
+    label: "Sign in",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e02 content_admin -> api_gateway [
+    label: "Request upload session",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e03 cognito -> api_gateway [
+    label: "JWT tokens",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e04 api_gateway -> upload_service [
+    label: "Create presigned multipart upload",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e05 upload_service -> content_admin [
+    label: "Return upload URLs",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e06 content_admin -> source_bucket [
+    label: "Upload large source file directly",
+    kind: data,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e07 source_bucket -> eventbridge [
+    label: "Object-created event",
+    kind: event,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e08 eventbridge -> processing_workflow [
+    label: "Start processing execution",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e09 eventbridge -> processing_workflow [
+    label: "Resume workflow",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e10 processing_workflow -> media_validation [
+    label: "Validate file and metadata",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e11 media_validation -> processing_dlq [
+    label: "Invalid media",
+    kind: failure,
+    route: orthogonal
+  ]
+
+  edge e12 media_validation -> media_convert [
+    label: "Valid media",
+    kind: async,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e13 processing_workflow -> media_convert [
+    label: "Submit and monitor job",
+    kind: async,
+    route: orthogonal
+  ]
+
+  edge e14 media_convert -> eventbridge [
+    label: "Job status",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e15 processing_workflow -> video_metadata [
+    label: "Update processing state",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e16 processing_workflow -> sns [
+    label: "Publish completion or failure",
+    kind: event,
+    route: orthogonal
+  ]
+
+  edge e17 viewers -> route53 [
+    label: "Open application",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e18 route53 -> waf_shield [
+    label: "Resolve application and media domains",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e19 waf_shield -> cloudfront [
+    label: "Protected request",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e20 viewers -> cognito [
+    label: "Authenticate",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e21 video_player -> api_gateway [
+    label: "Request playback entitlement",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e22 api_gateway -> playback_authorization [
+    label: "Authorize title and subscription",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e23 playback_authorization -> video_metadata [
+    label: "Read entitlement and asset metadata",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e24 playback_authorization -> video_player [
+    label: "Return short-lived signed access",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e25 video_player -> cloudfront [
+    label: "Request manifest and segments",
+    kind: stream,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e26 cloudfront -> origin_shield [
+    label: "Cache miss",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e27 origin_shield -> origin_access_control [
+    label: "Private origin request",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e28 origin_access_control -> distribution_bucket [
+    label: "Fetch HLS, DASH, MP4, thumbnails",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e29 cloudfront -> video_player [
+    label: "Adaptive bitrate stream",
+    kind: stream,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e30 api_gateway -> catalog_api [
+    label: "Browse and search catalog",
+    kind: sync,
+    route: orthogonal
+  ]
+
+  edge e31 catalog_api -> video_metadata [
+    label: "Read video catalog",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e32 video_player -> playback_events [
+    label: "QoE, startup, buffering, completion events",
+    kind: event,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e33 playback_events -> data_firehose [
+    label: "Stream events",
+    kind: stream,
+    route: orthogonal
+  ]
+
+  edge e34 data_firehose -> analytics_lake [
+    label: "Store partitioned analytics",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e35 kms -> source_bucket [
+    label: "Encrypt source and output objects",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e36 kms -> distribution_bucket [
+    label: "Encrypt source and output objects",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e37 secrets_manager -> upload_service [
+    label: "Application secrets",
+    kind: security,
+    route: orthogonal
+  ]
+
+  edge e38 iam -> source_bucket [
+    label: "Service permissions",
+    kind: security,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e39 iam -> media_convert [
+    label: "Service permissions",
+    kind: security,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e40 iam -> processing_workflow [
+    label: "Service permissions",
+    kind: security,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e41 cloudtrail -> api_gateway [
+    label: "Audit control-plane activity",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e42 cloudtrail -> source_bucket [
+    label: "Audit bucket and IAM activity",
+    kind: governance,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e43 cloudwatch -> processing_workflow [
+    label: "Workflow and job telemetry",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e44 cloudwatch -> media_convert [
+    label: "Transcoding metrics and logs",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e45 cloudwatch -> api_gateway [
+    label: "API and CDN alarms",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e46 xray -> api_gateway [
+    label: "Trace APIs and Lambda calls",
+    kind: observability,
+    route: orthogonal,
+    line: dashed
+  ]
+
+  edge e47 processing_dlq -> cloudwatch [
+    label: "Alarm on failed processing",
+    kind: failure,
+    route: orthogonal
+  ]
+
+  edge e48 cloudwatch -> sns [
+    label: "Alert operations team",
+    kind: notification,
+    route: orthogonal
+  ]
+
+  edge e49 media_convert -> renditions [
+    label: "Generate adaptive bitrate renditions",
+    kind: data,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e50 media_convert -> media_assets [
+    label: "Generate supporting assets",
+    kind: data,
+    route: orthogonal
+  ]
+
+  edge e51 renditions -> distribution_bucket [
+    label: "Write packaged media",
+    kind: data,
+    route: orthogonal,
+    animate: true
+  ]
+
+  edge e52 media_assets -> distribution_bucket [
+    label: "Write images and captions",
+    kind: data,
+    route: orthogonal
+  ]
+
+  animation upload_and_process {
+    step 1 [
+      activate: [content_admin, cognito, api_gateway],
+      edges: [e01, e02, e03],
+      narration: "The content administrator signs in and requests an upload session."
+    ]
+
+    step 2 [
+      activate: [upload_service, content_admin],
+      edges: [e04, e05],
+      narration: "The upload service creates presigned multipart upload URLs."
+    ]
+
+    step 3 [
+      activate: [content_admin, source_bucket],
+      edges: [e06],
+      effect: data-packet,
+      narration: "The original source video is uploaded directly to Amazon S3."
+    ]
+
+    step 4 [
+      activate: [source_bucket, eventbridge, processing_workflow],
+      edges: [e07, e08],
+      narration: "The object-created event starts the media processing workflow."
+    ]
+
+    step 5 [
+      activate: [processing_workflow, media_validation, media_convert],
+      edges: [e10, e12, e13],
+      narration: "The workflow validates the media and submits a MediaConvert job."
+    ]
+
+    step 6 [
+      activate: [media_convert, renditions, media_assets, distribution_bucket],
+      edges: [e49, e50, e51, e52],
+      effect: data-flow,
+      narration: "MediaConvert creates adaptive renditions and supporting assets."
+    ]
+  }
+
+  animation playback {
+    step 1 [
+      activate: [viewers, route53, waf_shield, cloudfront],
+      edges: [e17, e18, e19],
+      narration: "The viewer reaches the application through DNS, WAF and CloudFront."
+    ]
+
+    step 2 [
+      activate: [video_player, api_gateway, playback_authorization, video_metadata],
+      edges: [e21, e22, e23, e24],
+      narration: "The player requests entitlement and receives short-lived signed access."
+    ]
+
+    step 3 [
+      activate: [video_player, cloudfront, origin_shield, origin_access_control, distribution_bucket],
+      edges: [e25, e26, e27, e28, e29],
+      effect: stream-packet,
+      narration: "CloudFront serves cached segments or securely fetches them from the private S3 origin."
+    ]
+
+    step 4 [
+      activate: [video_player, playback_events, data_firehose, analytics_lake],
+      edges: [e32, e33, e34],
+      narration: "Playback quality and engagement telemetry are streamed into the analytics lake."
+    ]
+  }
+}

@@ -1,6 +1,7 @@
-import { Icon } from '@iconify/react'
 import {
   BaseBoxShapeUtil,
+  createShapePropsMigrationIds,
+  createShapePropsMigrationSequence,
   HTMLContainer,
   Rectangle2d,
   resizeBox,
@@ -20,7 +21,23 @@ export type FlowNodeProps = {
   icon: string
   /** Color name or #hex; '' = default ink/white. */
   color: string
+  fontFamily: string
 }
+
+const Versions = createShapePropsMigrationIds('flow-node', { AddFontFamily: 1 })
+
+const migrations = createShapePropsMigrationSequence({
+  sequence: [
+    {
+      id: Versions.AddFontFamily,
+      up: (props) => ({ ...props, fontFamily: '' }),
+      down: (props) => {
+        const { fontFamily: _fontFamily, ...rest } = props as FlowNodeProps
+        return rest
+      },
+    },
+  ],
+})
 
 declare module '@tldraw/tlschema' {
   interface TLGlobalShapePropsMap {
@@ -107,6 +124,8 @@ function ShapeOutline({ shape, w, h, stroke, fill }: { shape: FlowShape; w: numb
   )
 }
 
+import { Icon } from '@iconify/react'
+
 export class FlowNodeShapeUtil extends BaseBoxShapeUtil<FlowNodeShape> {
   static override type = 'flow-node' as const
 
@@ -117,10 +136,13 @@ export class FlowNodeShapeUtil extends BaseBoxShapeUtil<FlowNodeShape> {
     label: T.string,
     icon: T.string,
     color: T.string,
+    fontFamily: T.string,
   }
 
+  static override migrations = migrations
+
   override getDefaultProps(): FlowNodeProps {
-    return { w: 180, h: 80, shape: 'rectangle', label: 'Node', icon: '', color: '' }
+    return { w: 180, h: 80, shape: 'rectangle', label: 'Node', icon: '', color: '', fontFamily: '' }
   }
 
   override canResize = () => true
@@ -135,7 +157,7 @@ export class FlowNodeShapeUtil extends BaseBoxShapeUtil<FlowNodeShape> {
   }
 
   component(shape: FlowNodeShape) {
-    const { w, h, icon, label, color } = shape.props
+    const { w, h, icon, label, color, fontFamily } = shape.props
     const stroke = resolveColor(color) ?? 'var(--color-ink)'
     const fill = resolveColor(color) ? pastelFill(resolveColor(color)!) : 'var(--color-surface)'
     const editing = this.editor.getEditingShapeId() === shape.id
@@ -172,7 +194,7 @@ export class FlowNodeShapeUtil extends BaseBoxShapeUtil<FlowNodeShape> {
             placeItems: 'center',
             padding: '0 16px',
             textAlign: 'center',
-            fontFamily: "'Instrument Sans', sans-serif",
+            fontFamily: fontFamily || "var(--font-sans)",
             fontSize: 14,
             fontWeight: 600,
             lineHeight: 1.2,

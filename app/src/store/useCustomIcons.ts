@@ -1,31 +1,63 @@
 import { create } from 'zustand'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from '../lib/firebase'
+import { useAuth } from './useAuth'
+
+export type IconGroup = {
+  id: string
+  name: string
+  createdAt: number
+}
 
 export type CustomIcon = {
   id: string
   name: string
   src: string
   type: string
+  groupId?: string
   createdAt: number
 }
 
-const KEY = 'nb-custom-icons-v1'
+const KEY = 'nb-custom-icons-v2'
 const MAX_ICON_BYTES = 900_000
 
 type CustomIconsState = {
   icons: CustomIcon[]
+  groups: IconGroup[]
   hydrated: boolean
   hydrate: () => void
   addFiles: (files: FileList | File[]) => Promise<{ added: number; skipped: string[] }>
   removeIcon: (id: string) => void
   renameIcon: (id: string, name: string) => void
+  createGroup: (name: string) => void
+  deleteGroup: (id: string) => void
+  moveIcon: (iconId: string, groupId: string | null) => void
 }
 
 export const useCustomIcons = create<CustomIconsState>((set, get) => ({
   icons: [],
+  groups: [],
   hydrated: false,
   hydrate: () => {
     if (get().hydrated) return
-    set({ icons: readIcons(), hydrated: true })
+    const local = readLocal()
+    set({ icons: local.icons, groups: local.groups, hydrated: true })
+    
+    // Attempt cloud pull on startup
+    const uid = useAuth.getState().uid
+    if (uid && db) {
+      getDoc(doc(db, 'customIcons', uid)).then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data()
+          const cloudIcons = Array.isArray(data.icons) ? data.icons : []
+          const cloudGroups = Array.isArray(data.groups) ? data.groups : []
+          set({ icons: cloudIcons, groups: cloudGroups })
+          persistLocal(cloudIcons, cloudGroups)
+        }
+      }).catch((e) => {
+        console.error('[cloud-icons] initial pull failed:', e)
+      })
+    }
   },
   addFiles: async (files) => {
     const added: CustomIcon[] = []
@@ -48,20 +80,51 @@ export const useCustomIcons = create<CustomIconsState>((set, get) => ({
         createdAt: Date.now(),
       })
     }
-    const next = [...added, ...get().icons]
-    persist(next)
-    set({ icons: next, hydrated: true })
+    const nextIcons = [...added, ...get().icons]
+    set({ icons: nextIcons })
+    persistLocal(nextIcons, get().groups)
+    syncToFirebase(nextIcons, get().groups)
     return { added: added.length, skipped }
   },
   removeIcon: (id) => {
-    const next = get().icons.filter((icon) => icon.id !== id)
-    persist(next)
-    set({ icons: next })
+    const nextIcons = get().icons.filter((icon) => icon.id !== id)
+    set({ icons: nextIcons })
+    persistLocal(nextIcons, get().groups)
+    syncToFirebase(nextIcons, get().groups)
   },
   renameIcon: (id, name) => {
-    const next = get().icons.map((icon) => icon.id === id ? { ...icon, name: name.trim() || icon.name } : icon)
-    persist(next)
-    set({ icons: next })
+    const nextIcons = get().icons.map((icon) => icon.id === id ? { ...icon, name: name.trim() || icon.name } : icon)
+    set({ icons: nextIcons })
+    persistLocal(nextIcons, get().groups)
+    syncToFirebase(nextIcons, get().groups)
+  },
+  createGroup: (name) => {
+    const nextGroup: IconGroup = {
+      id: `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: name.trim() || 'New group',
+      createdAt: Date.now(),
+    }
+    const nextGroups = [...get().groups, nextGroup]
+    set({ groups: nextGroups })
+    persistLocal(get().icons, nextGroups)
+    syncToFirebase(get().icons, nextGroups)
+  },
+  deleteGroup: (id) => {
+    const nextGroups = get().groups.filter((g) => g.id !== id)
+    const nextIcons = get().icons.map((icon) =>
+      icon.groupId === id ? { ...icon, groupId: undefined } : icon
+    )
+    set({ groups: nextGroups, icons: nextIcons })
+    persistLocal(nextIcons, nextGroups)
+    syncToFirebase(nextIcons, nextGroups)
+  },
+  moveIcon: (iconId, groupId) => {
+    const nextIcons = get().icons.map((icon) =>
+      icon.id === iconId ? { ...icon, groupId: groupId || undefined } : icon
+    )
+    set({ icons: nextIcons })
+    persistLocal(nextIcons, get().groups)
+    syncToFirebase(nextIcons, get().groups)
   },
 }))
 
@@ -69,19 +132,54 @@ export function isCustomIconSrc(icon: string) {
   return icon.startsWith('data:image/')
 }
 
-function readIcons(): CustomIcon[] {
+function readLocal(): { icons: CustomIcon[]; groups: IconGroup[] } {
   try {
     const raw = localStorage.getItem(KEY)
-    const parsed = raw ? (JSON.parse(raw) as CustomIcon[]) : []
-    return Array.isArray(parsed) ? parsed.filter((icon) => icon?.src?.startsWith('data:image/')) : []
+    if (!raw) return { icons: [], groups: [] }
+    const parsed = JSON.parse(raw)
+    const icons = Array.isArray(parsed?.icons) ? parsed.icons : (Array.isArray(parsed) ? parsed : [])
+    const groups = Array.isArray(parsed?.groups) ? parsed.groups : []
+    return {
+      icons: icons.filter((i: any) => i?.src?.startsWith('data:image/')),
+      groups
+    }
   } catch {
-    return []
+    return { icons: [], groups: [] }
   }
 }
 
-function persist(icons: CustomIcon[]) {
-  localStorage.setItem(KEY, JSON.stringify(icons))
+function persistLocal(icons: CustomIcon[], groups: IconGroup[]) {
+  localStorage.setItem(KEY, JSON.stringify({ icons, groups }))
 }
+
+async function syncToFirebase(icons: CustomIcon[], groups: IconGroup[]) {
+  const uid = useAuth.getState().uid
+  if (!uid || !db) return
+  try {
+    await setDoc(doc(db, 'customIcons', uid), {
+      icons,
+      groups,
+      updatedAt: Date.now()
+    }, { merge: true })
+  } catch (err) {
+    console.error('[cloud-icons] push failed:', err)
+  }
+}
+
+// Watch user session changes to sync icons
+useAuth.subscribe((state, prevState) => {
+  if (state.uid !== prevState.uid && state.uid && db) {
+    getDoc(doc(db, 'customIcons', state.uid)).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
+        const cloudIcons = Array.isArray(data.icons) ? data.icons : []
+        const cloudGroups = Array.isArray(data.groups) ? data.groups : []
+        useCustomIcons.setState({ icons: cloudIcons, groups: cloudGroups, hydrated: true })
+        persistLocal(cloudIcons, cloudGroups)
+      }
+    }).catch(() => {})
+  }
+})
 
 function isIconFile(file: File) {
   return ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)

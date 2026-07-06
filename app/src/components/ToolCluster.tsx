@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Icon } from '@iconify/react'
-import { GeoShapeGeoStyle, react } from 'tldraw'
+import { GeoShapeGeoStyle, react, type Editor, ArrowShapeKindStyle } from 'tldraw'
 import { useDocStore } from '../store/useDocStore'
 import { TOOLBAR_TOOLS, GEO_SHAPES, QUICK_GEO_SHAPES, setTool, setGeoShape } from '../canvas/tools'
-import { createCodeBlock } from '../canvas/createNode'
+import { createCodeBlock, createSlideFrame } from '../canvas/createNode'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { useEditorUi, type ConnectorStyle } from '../store/useEditorUi'
 
@@ -27,6 +27,7 @@ export function ToolCluster() {
   const setConnectorStyle = useEditorUi((s) => s.setConnectorStyle)
   const [menu, setMenu] = useState<Menu>(null)
   const [currentGeo, setCurrentGeo] = useState<string>('rectangle')
+  const [selectedGeoButtonLabel, setSelectedGeoButtonLabel] = useState<string>('Rectangle — R')
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, () => setMenu(null), menu !== null)
 
@@ -53,11 +54,12 @@ export function ToolCluster() {
             key={`${s.label}-${s.geo}`}
             icon={s.icon}
             label={s.label}
-            active={geoActive && currentGeo === s.geo && !s.label.startsWith('Square')}
+            active={geoActive && currentGeo === s.geo && selectedGeoButtonLabel === s.label}
 	            onClick={() => {
 	              setMenu(null)
 	              setFigureToolActive(false)
 	              setGeoShape(editor, s.geo)
+	              setSelectedGeoButtonLabel(s.label)
 	            }}
           />
         ))}
@@ -65,18 +67,23 @@ export function ToolCluster() {
         <Sep />
 
         {/* Shapes picker */}
-        <button
-          onClick={() => setMenu(menu === 'shapes' ? null : 'shapes')}
-          title="More shapes"
-          aria-pressed={geoActive || menu === 'shapes'}
-          className={
-            'flex h-9 items-center gap-0.5 rounded-xl px-2 transition-colors ' +
-            (geoActive || menu === 'shapes' ? 'bg-ink text-paper' : 'text-grey-4 hover:bg-grey-1 hover:text-ink')
-          }
-        >
-          <Icon icon="lucide:shapes" width={17} />
-          <Icon icon="lucide:chevron-down" width={12} />
-        </button>
+        {(() => {
+          const isShapesPickerActive = menu === 'shapes' || (geoActive && currentGeo !== 'rectangle' && currentGeo !== 'ellipse')
+          return (
+            <button
+              onClick={() => setMenu(menu === 'shapes' ? null : 'shapes')}
+              title="More shapes"
+              aria-pressed={isShapesPickerActive}
+              className={
+                'flex h-9 items-center gap-0.5 rounded-xl px-2 transition-colors ' +
+                (isShapesPickerActive ? 'bg-ink text-paper' : 'text-grey-4 hover:bg-grey-1 hover:text-ink')
+              }
+            >
+              <Icon icon="lucide:shapes" width={17} />
+              <Icon icon="lucide:chevron-down" width={12} />
+            </button>
+          )
+        })()}
 
         {TOOLBAR_TOOLS.slice(2).map((t) => (
 	          <ToolBtn key={t.id} icon={t.icon} label={t.label} active={!figureToolActive && activeTool === t.id} onClick={() => { setMenu(null); setFigureToolActive(false); setTool(editor, t.id) }} />
@@ -93,14 +100,24 @@ export function ToolCluster() {
           }}
         />
         <ToolBtn
+          icon="lucide:presentation"
+          label="Add slide frame"
+          active={false}
+          onClick={() => {
+            setMenu(null)
+            setFigureToolActive(false)
+            if (editor) createSlideFrame(editor)
+          }}
+        />
+        <ToolBtn
           icon="lucide:square-code"
           label="Code block"
           active={false}
-	          onClick={() => {
-	            setMenu(null)
-	            setFigureToolActive(false)
-	            if (editor) createCodeBlock(editor)
-	          }}
+          onClick={() => {
+            setMenu(null)
+            setFigureToolActive(false)
+            if (editor) createCodeBlock(editor)
+          }}
         />
         <ToolBtn
           icon="lucide:message-square"
@@ -117,9 +134,9 @@ export function ToolCluster() {
 
         <Sep />
 
-        <ConnectorStyleButton style="straight" current={connectorStyle} icon="lucide:minus" setStyle={setConnectorStyle} />
-        <ConnectorStyleButton style="curved" current={connectorStyle} icon="lucide:route" setStyle={setConnectorStyle} />
-        <ConnectorStyleButton style="elbow" current={connectorStyle} icon="lucide:corner-down-right" setStyle={setConnectorStyle} />
+        <ConnectorStyleButton style="straight" current={connectorStyle} icon="lucide:minus" setStyle={setConnectorStyle} editor={editor} />
+        <ConnectorStyleButton style="curved" current={connectorStyle} icon="lucide:route" setStyle={setConnectorStyle} editor={editor} />
+        <ConnectorStyleButton style="elbow" current={connectorStyle} icon="lucide:corner-down-right" setStyle={setConnectorStyle} editor={editor} />
       </div>
 
       {menu === 'shapes' && (
@@ -130,7 +147,12 @@ export function ToolCluster() {
               <button
                 key={s.geo}
                 title={s.label}
-	                onClick={() => { setFigureToolActive(false); setGeoShape(editor, s.geo); setMenu(null) }}
+	                onClick={() => {
+	                  setFigureToolActive(false)
+	                  setGeoShape(editor, s.geo)
+	                  setSelectedGeoButtonLabel(s.label)
+	                  setMenu(null)
+	                }}
                 className="grid aspect-square place-items-center rounded-lg text-grey-4 transition-colors hover:bg-grey-1 hover:text-ink"
               >
                 <Icon icon={s.icon} width={18} />
@@ -172,21 +194,34 @@ function ConnectorStyleButton({
   current,
   icon,
   setStyle,
+  editor,
 }: {
   style: ConnectorStyle
   current: ConnectorStyle
   icon: string
   setStyle: (style: ConnectorStyle) => void
+  editor: Editor | null
 }) {
+  const activeTool = useDocStore((s) => s.activeTool)
+  const isButtonActive = activeTool === 'arrow' && current === style
+
   return (
     <button
-      onClick={() => setStyle(style)}
+      onClick={() => {
+        setStyle(style)
+        if (editor) {
+          const kind = style === 'elbow' ? 'elbow' : 'arc'
+          editor.setStyleForNextShapes(ArrowShapeKindStyle, kind)
+          editor.updateInstanceState({ isToolLocked: true })
+          editor.setCurrentTool('arrow')
+        }
+      }}
       title={`${style} arrows`}
       aria-label={`${style} arrows`}
-      aria-pressed={current === style}
-      className={'relative grid h-9 w-9 place-items-center rounded-xl transition-colors ' + (current === style ? 'text-paper' : 'text-grey-4 hover:bg-grey-1 hover:text-ink')}
+      aria-pressed={isButtonActive}
+      className={'relative grid h-9 w-9 place-items-center rounded-xl transition-colors ' + (isButtonActive ? 'text-paper' : 'text-grey-4 hover:bg-grey-1 hover:text-ink')}
     >
-      {current === style && (
+      {isButtonActive && (
         <motion.span layoutId="connector-pill" className="absolute inset-0 rounded-xl bg-ink" transition={{ type: 'spring', stiffness: 500, damping: 34 }} />
       )}
       <span className="relative z-10">

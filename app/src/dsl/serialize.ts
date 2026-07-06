@@ -219,7 +219,10 @@ export function serializeErdFromCanvas(editor: Editor) {
     names.set(entity.id, name)
     const icon = String(props.icon || '')
     const color = String(props.color || '')
-    const meta = [icon ? `icon: ${icon}` : '', color ? `color: ${color}` : ''].filter(Boolean)
+    const meta = [
+      icon ? `icon: ${icon}` : '',
+      color ? `color: ${color}` : '',
+    ].filter(Boolean)
     lines.push(`${quoted(name)}${meta.length ? ` [${meta.join(', ')}]` : ''} {`)
     for (const row of parseRows(String(props.rows || '[]'))) {
       lines.push(`  ${row.name}${row.type ? ` ${row.type}` : ''}${row.pk ? ' pk' : ''}`)

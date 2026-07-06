@@ -18,13 +18,19 @@ export function IconLibrary() {
   const [results, setResults] = useState<string[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
+  const [newGroupName, setNewGroupName] = useState('')
   const abortRef = useRef<AbortController | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  
   const customIcons = useCustomIcons((s) => s.icons)
+  const groups = useCustomIcons((s) => s.groups)
   const hydrateCustomIcons = useCustomIcons((s) => s.hydrate)
   const addCustomIcons = useCustomIcons((s) => s.addFiles)
   const removeCustomIcon = useCustomIcons((s) => s.removeIcon)
   const renameCustomIcon = useCustomIcons((s) => s.renameIcon)
+  const createGroup = useCustomIcons((s) => s.createGroup)
+  const deleteGroup = useCustomIcons((s) => s.deleteGroup)
+  const moveIcon = useCustomIcons((s) => s.moveIcon)
 
   useEffect(() => {
     hydrateCustomIcons()
@@ -69,6 +75,13 @@ export function IconLibrary() {
     setNotice(result.added ? `${result.added} custom icon${result.added > 1 ? 's' : ''} added${skipped}` : skipped || 'No icons added')
     window.setTimeout(() => setNotice(''), 2800)
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newGroupName.trim()) return
+    createGroup(newGroupName.trim())
+    setNewGroupName('')
   }
 
   const customMatches = query.trim()
@@ -135,7 +148,7 @@ export function IconLibrary() {
               {customMatches.length > 0 && (
                 <section>
                   <h4 className="mb-2 px-1 font-mono text-[10px] uppercase tracking-widest text-grey-3">Your custom icons</h4>
-                  <CustomIconGrid icons={customMatches} onPick={insert} onRemove={removeCustomIcon} onRename={renameCustomIcon} />
+                  <CustomIconGrid icons={customMatches} groups={groups} onPick={insert} onRemove={removeCustomIcon} onRename={renameCustomIcon} onMove={moveIcon} />
                 </section>
               )}
               {results.length > 0 && (
@@ -148,25 +161,88 @@ export function IconLibrary() {
           )
         ) : (
           <>
-            <section className="mb-5">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <h4 className="font-mono text-[10px] uppercase tracking-widest text-grey-3">Your custom icons</h4>
-                <button onClick={() => fileRef.current?.click()} className="text-xs font-semibold text-ink hover:opacity-70">Upload</button>
+            <section className="mb-5 border-b border-line pb-4">
+              <div className="mb-3 flex items-center justify-between px-1">
+                <h4 className="font-mono text-[10px] uppercase tracking-widest text-grey-3">Custom groups</h4>
+                <button onClick={() => fileRef.current?.click()} className="text-xs font-semibold text-ink hover:opacity-70">Upload Icons</button>
               </div>
-              {customIcons.length ? (
-                <CustomIconGrid icons={customIcons} onPick={insert} onRemove={removeCustomIcon} onRename={renameCustomIcon} />
-              ) : (
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line bg-surface p-3 text-left hover:border-ink"
-                >
-                  <Icon icon="lucide:sparkles" width={18} className="text-grey-3" />
-                  <span>
-                    <span className="block text-sm font-semibold text-ink">Create your private icon set</span>
-                    <span className="block text-xs text-grey-3">Upload product, team, and internal service logos.</span>
-                  </span>
+              
+              {/* Add group input */}
+              <form onSubmit={handleCreateGroup} className="mb-3 flex gap-1.5 px-1">
+                <input
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="New folder group name..."
+                  className="h-8 flex-1 rounded-lg border border-line bg-surface px-2.5 text-xs text-ink outline-none focus:border-ink placeholder:text-grey-2"
+                />
+                <button type="submit" className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-paper hover:opacity-90">
+                  <Icon icon="lucide:plus" width={14} />
                 </button>
-              )}
+              </form>
+
+              {/* Render groups */}
+              <div className="space-y-4">
+                {groups.map((group) => {
+                  const matches = customIcons.filter((i) => i.groupId === group.id)
+                  return (
+                    <div key={group.id} className="rounded-xl border border-line bg-surface/40 p-2">
+                      <div className="mb-2 flex items-center justify-between px-1">
+                        <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                          <Icon icon="lucide:folder" width={13} className="text-grey-3" />
+                          {group.name}
+                          <span className="text-[10px] text-grey-3 font-normal">({matches.length})</span>
+                        </span>
+                        <button
+                          onClick={() => deleteGroup(group.id)}
+                          title="Delete group"
+                          className="rounded p-0.5 text-grey-3 hover:bg-grey-1 hover:text-red-500"
+                        >
+                          <Icon icon="lucide:trash-2" width={12} />
+                        </button>
+                      </div>
+                      {matches.length ? (
+                        <CustomIconGrid
+                          icons={matches}
+                          groups={groups}
+                          onPick={insert}
+                          onRemove={removeCustomIcon}
+                          onRename={renameCustomIcon}
+                          onMove={moveIcon}
+                        />
+                      ) : (
+                        <div className="py-3 text-center text-[10px] text-grey-3">Empty folder group. Move custom icons here.</div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Uncategorized group */}
+                {(() => {
+                  const uncategorized = customIcons.filter((i) => !i.groupId)
+                  if (uncategorized.length === 0 && groups.length > 0) return null
+                  return (
+                    <div className="rounded-xl border border-line bg-surface/40 p-2">
+                      <div className="mb-2 px-1 text-xs font-semibold text-ink flex items-center gap-1.5">
+                        <Icon icon="lucide:folder-open" width={13} className="text-grey-3" />
+                        Uncategorized
+                        <span className="text-[10px] text-grey-3 font-normal">({uncategorized.length})</span>
+                      </div>
+                      {uncategorized.length ? (
+                        <CustomIconGrid
+                          icons={uncategorized}
+                          groups={groups}
+                          onPick={insert}
+                          onRemove={removeCustomIcon}
+                          onRename={renameCustomIcon}
+                          onMove={moveIcon}
+                        />
+                      ) : (
+                        <div className="py-3 text-center text-[10px] text-grey-3">No uncategorized custom icons.</div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
             </section>
             {ICON_CATEGORIES.map((cat) => (
               <section key={cat.name} className="mb-5 last:mb-0">
@@ -213,14 +289,18 @@ function IconGrid({
 
 function CustomIconGrid({
   icons,
+  groups,
   onPick,
   onRemove,
   onRename,
+  onMove,
 }: {
   icons: CustomIcon[]
+  groups: { id: string; name: string }[]
   onPick: (icon: string, label?: string) => void
   onRemove: (id: string) => void
   onRename: (id: string, name: string) => void
+  onMove: (id: string, groupId: string | null) => void
 }) {
   return (
     <div className="grid grid-cols-3 gap-2">
@@ -244,6 +324,18 @@ function CustomIconGrid({
             className="mt-1 w-full bg-transparent text-center text-[11px] font-semibold text-ink outline-none"
             title="Rename custom icon"
           />
+          <div className="mt-1 flex justify-center">
+            <select
+              value={icon.groupId || ''}
+              onChange={(e) => onMove(icon.id, e.currentTarget.value || null)}
+              className="text-[9px] bg-paper text-grey-4 outline-none border border-line rounded px-1 py-0.5 cursor-pointer max-w-[80px]"
+            >
+              <option value="">Move...</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={() => onRemove(icon.id)}
             aria-label={`Delete ${icon.name}`}

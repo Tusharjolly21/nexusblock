@@ -23,6 +23,8 @@ import { cloudEnabled, resolveShareAccess } from './sync/cloud'
 import { AuthProvider } from './auth/AuthProvider'
 import { LoadingAnimation } from './components/LoadingAnimation'
 import { FeatureTour } from './components/FeatureTour'
+import { CanvasPane } from './components/CanvasPane'
+import { ZoomPill } from './components/ZoomPill'
 
 /**
  * Routes:
@@ -58,6 +60,7 @@ export default function App() {
             <Route path="folder/:folderId" element={<Dashboard />} />
             <Route path="file/:fileId" element={<FileEditorRoute />} />
           </Route>
+          <Route path="/embed/:fileId" element={<EmbedFileRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
@@ -125,7 +128,8 @@ function ProductLayout() {
  */
 function FileEditorRoute() {
   const { fileId } = useParams()
-  // "Owned" = a real file in this user's workspace (not a shared one).
+  const hasHydrated = useApp((s) => s._hasHydrated)
+  const cloudSyncReady = useApp((s) => s.cloudSyncReady)
   const owned = useApp((s) => s.files.some((f) => f.id === fileId && !f.sharedFrom))
   const setCurrentFile = useApp((s) => s.setCurrentFile)
 
@@ -133,6 +137,8 @@ function FileEditorRoute() {
     if (fileId && owned) setCurrentFile(fileId)
     return () => setCurrentFile(null)
   }, [fileId, owned, setCurrentFile])
+
+  if (!hasHydrated || !cloudSyncReady) return <AuthLoading label="Opening workspace..." />
 
   if (!fileId) return <Navigate to="/dashboard/all" replace />
   if (owned) return <Editor fileId={fileId} />
@@ -250,4 +256,108 @@ function SharedFileBanner({ role }: { role: 'view' | 'edit' }) {
       </span>
     </div>
   )
+}
+
+function EmbedFileRoute() {
+  const { fileId } = useParams()
+  const owned = useApp((s) => s.files.some((f) => f.id === fileId && !f.sharedFrom))
+  const setCurrentFile = useApp((s) => s.setCurrentFile)
+
+  useEffect(() => {
+    if (fileId && owned) setCurrentFile(fileId)
+    return () => setCurrentFile(null)
+  }, [fileId, owned, setCurrentFile])
+
+  if (!fileId) return <div className="p-4 text-xs">No file ID provided.</div>
+  if (owned) {
+    return (
+      <div className="relative flex h-screen w-screen overflow-hidden bg-paper">
+        <CanvasPane />
+        <ZoomPill />
+        <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-3">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface/95 px-3.5 py-1.5 shadow-[0_10px_28px_-14px_rgba(0,0,0,.35)] backdrop-blur">
+            <span className="text-xs font-semibold tracking-tight text-ink">nexusblock</span>
+            <span className="h-3 w-px bg-line" />
+            <a
+              href={`/app/file/${fileId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 text-[11px] font-bold text-sky-600 hover:text-sky-700"
+            >
+              <span>Open in App</span>
+              <Icon icon="lucide:external-link" width={11} />
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return <SharedEmbedRoute fileId={fileId} />
+}
+
+function SharedEmbedRoute({ fileId }: { fileId: string }) {
+  const uid = useAuth((s) => s.uid)
+  const email = useAuth((s) => s.email)
+  const openSharedFile = useApp((s) => s.openSharedFile)
+  const setCurrentFile = useApp((s) => s.setCurrentFile)
+  const ready = useApp((s) => s.files.some((f) => f.id === fileId && f.sharedFrom))
+  const [state, setState] = useState<'checking' | 'granted' | 'denied' | 'notfound'>('checking')
+
+  useEffect(() => {
+    if (!cloudEnabled()) { setState('notfound'); return }
+    let cancelled = false
+    resolveShareAccess(fileId, uid, email)
+      .then((r) => {
+        if (cancelled) return
+        if (r.status !== 'granted') { setState(r.status); return }
+        openSharedFile({
+          id: fileId,
+          title: r.title,
+          template: 'blank',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          folderId: null,
+          sharedFrom: r.ownerUid,
+          sharedRole: r.role,
+        })
+        setState('granted')
+      })
+      .catch((err) => {
+        console.error('[embed] share access failed:', err)
+        if (!cancelled) setState('notfound')
+      })
+    return () => { cancelled = true; setCurrentFile(null) }
+  }, [fileId, uid, email, openSharedFile, setCurrentFile])
+
+  if (state === 'checking' || (state === 'granted' && !ready)) {
+    return (
+      <div className="grid h-screen w-screen place-items-center bg-paper text-xs">
+        <LoadingAnimation size="md" label="Loading embed..." />
+      </div>
+    )
+  }
+  if (state === 'granted') {
+    return (
+      <div className="relative flex h-screen w-screen overflow-hidden bg-paper">
+        <CanvasPane />
+        <ZoomPill />
+        <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-3">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface/95 px-3.5 py-1.5 shadow-[0_10px_28px_-14px_rgba(0,0,0,.35)] backdrop-blur">
+            <span className="text-xs font-semibold tracking-tight text-ink">nexusblock</span>
+            <span className="h-3 w-px bg-line" />
+            <a
+              href={`/app/file/${fileId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 text-[11px] font-bold text-sky-600 hover:text-sky-700"
+            >
+              <span>Open in App</span>
+              <Icon icon="lucide:external-link" width={11} />
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return <div className="grid h-screen w-screen place-items-center bg-paper text-xs text-grey-3">Access Denied: Private Diagram</div>
 }

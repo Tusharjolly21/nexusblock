@@ -25,6 +25,10 @@ export function ShareModal({ fileId, title, onClose }: { fileId: string; title: 
   const [inviteCopied, setInviteCopied] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [queuedInvite, setQueuedInvite] = useState<string | null>(null)
+  const [embedWidth, setEmbedWidth] = useState('100%')
+  const [embedHeight, setEmbedHeight] = useState('500')
+  const [embedTone, setEmbedTone] = useState<'light' | 'obsidian'>('light')
+  const [embedCopied, setEmbedCopied] = useState(false)
 
   const url = `${window.location.origin}/app/file/${fileId}`
   const liveUrl = `${url}?live=1`
@@ -281,6 +285,71 @@ export function ShareModal({ fileId, title, onClose }: { fileId: string; title: 
                 <QRCodeSVG value={url} size={86} bgColor="#ffffff" fgColor="#18181b" />
               </div>
               <p className="mt-2 text-center text-xs font-medium text-grey-3">Open on mobile</p>
+            </div>
+          </section>
+
+          <section className="mt-5 rounded-2xl border border-line bg-surface p-5">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-grey-1 text-ink">
+                <Icon icon="lucide:code-2" width={15} />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-ink">Embed Diagram</div>
+                <p className="text-xs text-grey-3">Integrate this diagram into web pages, LMS platforms, or Notion docs.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Width</label>
+                <input
+                  type="text"
+                  value={embedWidth}
+                  onChange={(e) => setEmbedWidth(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Height</label>
+                <input
+                  type="text"
+                  value={embedHeight}
+                  onChange={(e) => setEmbedHeight(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Theme</label>
+                <select
+                  value={embedTone}
+                  onChange={(e) => setEmbedTone(e.target.value as 'light' | 'obsidian')}
+                  className="mt-1 w-full rounded-lg border border-line bg-paper px-2 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+                >
+                  <option value="light">Light Board</option>
+                  <option value="obsidian">Obsidian Workbench</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <input
+                readOnly
+                type="text"
+                value={`<iframe src="${window.location.origin}/embed/${fileId}?tone=${embedTone}" width="${embedWidth}" height="${embedHeight}" style="border: 1px solid #e4e4e7; border-radius: 12px;" allowfullscreen></iframe>`}
+                className="min-w-0 flex-1 rounded-lg border border-line bg-grey-1 px-3 py-1.5 font-mono text-[10px] text-grey-4 outline-none"
+              />
+              <button
+                onClick={() => {
+                  const val = `<iframe src="${window.location.origin}/embed/${fileId}?tone=${embedTone}" width="${embedWidth}" height="${embedHeight}" style="border: 1px solid #e4e4e7; border-radius: 12px;" allowfullscreen></iframe>`
+                  navigator.clipboard.writeText(val).then(() => {
+                    setEmbedCopied(true)
+                    window.setTimeout(() => setEmbedCopied(false), 1500)
+                  })
+                }}
+                className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-paper hover:opacity-90"
+              >
+                {embedCopied ? 'Copied!' : 'Copy Code'}
+              </button>
             </div>
           </section>
 

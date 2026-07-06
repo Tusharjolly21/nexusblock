@@ -23,6 +23,7 @@ export const UI = {
   shapes: 'lucide:monitor-smartphone',
   icons: 'lucide:smile',
   catalog: 'lucide:layout-grid',
+  dsa: 'lucide:network',
   comment: 'lucide:message-circle',
   code: 'lucide:terminal',
   doc: 'lucide:file-text',
