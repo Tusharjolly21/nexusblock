@@ -67,6 +67,8 @@ export type CreateNodeOpts = {
   label?: string
   tech?: string
   icon?: string
+  w?: number
+  h?: number
   /** Page-space top-left target; defaults to viewport center. */
   point?: VecLike
 }
@@ -86,7 +88,7 @@ export function createArchNode(editor: Editor, opts: CreateNodeOpts = {}) {
     type: 'arch-node',
     x: center.x,
     y: center.y,
-    props: { w: NODE_W, h: NODE_H, kind, label, tech, icon },
+    props: { w: opts.w ?? NODE_W, h: opts.h ?? NODE_H, kind, label, tech, icon },
   })
   editor.select(id)
   return id

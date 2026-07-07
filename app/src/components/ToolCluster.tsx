@@ -40,6 +40,69 @@ export function ToolCluster() {
     })
   }, [editor])
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return
+      if (e.metaKey || e.ctrlKey) return
+
+      const key = e.key.toLowerCase()
+
+      // Alt/Option combinations for connector/arrow styles
+      if (e.altKey) {
+        if (e.key === '1') {
+          e.preventDefault()
+          setConnectorStyle('straight')
+          if (editor) {
+            editor.setStyleForNextShapes(ArrowShapeKindStyle, 'arc')
+            editor.updateInstanceState({ isToolLocked: true })
+            editor.setCurrentTool('arrow')
+          }
+        } else if (e.key === '2') {
+          e.preventDefault()
+          setConnectorStyle('curved')
+          if (editor) {
+            editor.setStyleForNextShapes(ArrowShapeKindStyle, 'arc')
+            editor.updateInstanceState({ isToolLocked: true })
+            editor.setCurrentTool('arrow')
+          }
+        } else if (e.key === '3') {
+          e.preventDefault()
+          setConnectorStyle('elbow')
+          if (editor) {
+            editor.setStyleForNextShapes(ArrowShapeKindStyle, 'elbow')
+            editor.updateInstanceState({ isToolLocked: true })
+            editor.setCurrentTool('arrow')
+          }
+        }
+        return
+      }
+
+      // Single-character shortcuts
+      if (key === 's') {
+        e.preventDefault()
+        setFigureToolActive(false)
+        setMenu(null)
+        if (editor) createSlideFrame(editor)
+      } else if (key === 'k') {
+        e.preventDefault()
+        setFigureToolActive(false)
+        setMenu(null)
+        if (editor) createCodeBlock(editor)
+      } else if (key === 'g') {
+        e.preventDefault()
+        setFigureToolActive(false)
+        setMenu(null)
+        if (editor) setTool(editor, 'highlight')
+      } else if (key === 'm') {
+        e.preventDefault()
+        setMenu((prev) => (prev === 'shapes' ? null : 'shapes'))
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [editor, setConnectorStyle, setFigureToolActive])
+
   return (
     <div ref={ref} data-tour="tool-cluster" className="pointer-events-auto absolute left-1/2 top-3 z-20 flex -translate-x-1/2 flex-col items-center">
       <div className="flex max-w-[calc(100vw-96px)] flex-nowrap items-center justify-center gap-0.5 overflow-x-auto rounded-2xl border border-line bg-surface/95 p-1 shadow-[0_12px_30px_-14px_rgba(0,0,0,.3)] backdrop-blur">
@@ -72,7 +135,7 @@ export function ToolCluster() {
           return (
             <button
               onClick={() => setMenu(menu === 'shapes' ? null : 'shapes')}
-              title="More shapes"
+              title="More shapes — M"
               aria-pressed={isShapesPickerActive}
               className={
                 'flex h-9 items-center gap-0.5 rounded-xl px-2 transition-colors ' +
@@ -101,7 +164,7 @@ export function ToolCluster() {
         />
         <ToolBtn
           icon="lucide:presentation"
-          label="Add slide frame"
+          label="Slide frame — S"
           active={false}
           onClick={() => {
             setMenu(null)
@@ -111,7 +174,7 @@ export function ToolCluster() {
         />
         <ToolBtn
           icon="lucide:square-code"
-          label="Code block"
+          label="Code block — K"
           active={false}
           onClick={() => {
             setMenu(null)
@@ -205,6 +268,9 @@ function ConnectorStyleButton({
   const activeTool = useDocStore((s) => s.activeTool)
   const isButtonActive = activeTool === 'arrow' && current === style
 
+  const shortcutLabel = style === 'straight' ? 'Alt+1' : style === 'curved' ? 'Alt+2' : 'Alt+3'
+  const titleText = `${style.charAt(0).toUpperCase() + style.slice(1)} arrows — ${shortcutLabel}`
+
   return (
     <button
       onClick={() => {
@@ -216,8 +282,8 @@ function ConnectorStyleButton({
           editor.setCurrentTool('arrow')
         }
       }}
-      title={`${style} arrows`}
-      aria-label={`${style} arrows`}
+      title={titleText}
+      aria-label={titleText}
       aria-pressed={isButtonActive}
       className={'relative grid h-9 w-9 place-items-center rounded-xl transition-colors ' + (isButtonActive ? 'text-paper' : 'text-grey-4 hover:bg-grey-1 hover:text-ink')}
     >
@@ -229,4 +295,9 @@ function ConnectorStyleButton({
       </span>
     </button>
   )
+}
+
+const isEditableTarget = (target: EventTarget | null) => {
+  const node = target as HTMLElement | null
+  return !!node?.closest('input, textarea, select, [contenteditable="true"], .monaco-editor, [data-canvas-editor-block="true"]')
 }

@@ -17,10 +17,10 @@ export class TldrawRendererAdapter {
   render(graph: NexusGraphIR, activeLevel: number = 2) {
     this.editor.markHistoryStoppingPoint('render-template-level')
 
-    // 1. Delete all existing shapes tagged with this templateId
+    // 1. Delete all existing shapes tagged with any templateId to prevent overlaps when switching templates
     const existingShapes = this.editor.getCurrentPageShapes().filter((s) => {
       const meta = (s.meta as any) || {}
-      return meta.templateId === this.templateId
+      return !!meta.templateId
     })
     if (existingShapes.length > 0) {
       this.editor.deleteShapes(existingShapes.map((s) => s.id))
@@ -89,12 +89,25 @@ export class TldrawRendererAdapter {
           },
         })
       } else {
+        const validKinds = ['client', 'service', 'db', 'queue', 'external']
+        let kind = n.semanticType
+        if (!validKinds.includes(kind)) {
+          if (['gateway', 'integration', 'reliability', 'notification', 'service', 'authentication', 'workflow', 'network', 'observability', 'governance'].includes(kind)) {
+            kind = 'service'
+          } else if (['cache', 'storage', 'db'].includes(kind)) {
+            kind = 'db'
+          } else {
+            kind = 'service'
+          }
+        }
         id = createArchNode(this.editor, {
-          kind: n.semanticType as any,
+          kind: kind as any,
           label: n.label,
           tech: n.technology,
           icon: n.icon,
           point,
+          w: n.size?.w,
+          h: n.size?.h,
         })
       }
 
@@ -121,9 +134,14 @@ export class TldrawRendererAdapter {
         props: {
           richText: toRichText(e.label || ''),
           dash: e.communication === 'async' ? 'dashed' : 'solid',
+          arrowheadStart: e.direction === 'bidirectional' || e.direction === 'reverse' ? 'arrow' : 'none',
+          arrowheadEnd: e.direction === 'bidirectional' || e.direction === 'forward' || !e.direction ? 'arrow' : 'none',
         } as any,
         meta: { templateId: this.templateId, elementId: e.id },
       } as any)
     }
+
+    // Zoom to fit the newly rendered shapes for full responsiveness
+    this.editor.zoomToFit({ animation: { duration: 250 } })
   }
 }

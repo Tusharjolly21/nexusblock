@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import { useCatalogStore, type InsertedTemplate } from '../store/useCatalogStore'
-import { TldrawRendererAdapter } from '../canvas/rendererAdapter'
 import { useDocStore } from '../store/useDocStore'
+import { useEditorUi } from '../store/useEditorUi'
 
 export function DiagramAnimationOverlay() {
   const editor = useDocStore((s) => s.editor)
@@ -65,6 +65,7 @@ function FlowParticlesLayer({
 }) {
   const isPlaying = activeTpl.isPlaying
   const showParticles = activeTpl.isAnimated && isPlaying
+  const flowStyle = useEditorUi((s) => s.flowAnimationStyle)
 
   if (!showParticles || !activeTpl.graph.animation) return null
 
@@ -72,6 +73,27 @@ function FlowParticlesLayer({
 
   return (
     <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes trace-flow-move {
+          0% { offset-distance: 0%; }
+          100% { offset-distance: 100%; }
+        }
+        @keyframes trace-flow-dashes {
+          to { stroke-dashoffset: -40; }
+        }
+        @keyframes trace-flow-laser {
+          from { stroke-dashoffset: 140; }
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes trace-flow-hue {
+          from { filter: hue-rotate(0deg) drop-shadow(0 0 5px #f43f5e); }
+          to { filter: hue-rotate(360deg) drop-shadow(0 0 5px #f43f5e); }
+        }
+        @keyframes trace-conduit-pulse {
+          0%, 100% { opacity: 0.2; stroke-width: 1.2px; }
+          50% { opacity: 0.5; stroke-width: 2.2px; }
+        }
+      `}} />
       {paths.map((path) => {
         // Find corresponding tldraw arrow shape for this edge
         const arrow = templateShapes.find(
@@ -79,24 +101,153 @@ function FlowParticlesLayer({
         )
         if (!arrow) return null
 
-        // Get start and end points in absolute page space
-        const startPage = { x: arrow.x + arrow.props.start.x, y: arrow.y + arrow.props.start.y }
-        const endPage = { x: arrow.x + arrow.props.end.x, y: arrow.y + arrow.props.end.y }
+        const geom = editor.getShapeGeometry(arrow.id)
+        if (!geom || !geom.vertices || geom.vertices.length < 2) return null
 
-        // Map to client viewport coordinates
-        const startScreen = editor.pageToScreen(startPage)
-        const endScreen = editor.pageToScreen(endPage)
+        const screenPoints = geom.vertices.map((v: any) => {
+          const pagePt = { x: arrow.x + v.x, y: arrow.y + v.y }
+          return editor.pageToScreen(pagePt)
+        })
 
-        const pathD = `M ${startScreen.x} ${startScreen.y} L ${endScreen.x} ${endScreen.y}`
-        const color = path.color || '#3b82f6'
-        const duration = `${(path.speed || 2) * (activeTpl.speed || 1)}s`
+        const pathD = screenPoints
+          .map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+          .join(' ')
+
+        // Resolve shape overrides with fallbacks
+        const color = (arrow.meta as any)?.flowColor || path.color || '#3b82f6'
+        const rawSpeed = (arrow.meta as any)?.flowSpeed || path.speed || 2
+        const duration = `${rawSpeed * (activeTpl.speed || 1)}s`
+        const localFlowStyle = (arrow.meta as any)?.flowStyle || flowStyle
 
         return (
           <g key={path.edgeId}>
-            <path d={pathD} fill="none" stroke="transparent" />
-            <circle r="4" fill={color}>
-              <animateMotion dur={duration} repeatCount="indefinite" path={pathD} />
-            </circle>
+            {/* Animated pulsating line conduit backdrop */}
+            <path
+              d={pathD}
+              fill="none"
+              stroke={color}
+              strokeWidth={1.5}
+              style={{
+                animation: 'trace-conduit-pulse 2s infinite ease-in-out',
+                filter: `drop-shadow(0 0 3px ${color})`,
+              }}
+            />
+
+            {/* 1. Particle */}
+            {localFlowStyle === 'particle' && (
+              <circle r="4.5" fill={color} style={{ filter: `drop-shadow(0 0 5px ${color})` }}>
+                <animateMotion dur={duration} repeatCount="indefinite" path={pathD} />
+              </circle>
+            )}
+
+            {/* 2. Dashes */}
+            {localFlowStyle === 'dashes' && (
+              <path
+                d={pathD}
+                fill="none"
+                stroke={color}
+                strokeWidth={2.5}
+                strokeDasharray="12,12"
+                style={{
+                  animation: 'trace-flow-dashes 1.2s infinite linear',
+                  filter: `drop-shadow(0 0 4px ${color})`,
+                }}
+              />
+            )}
+
+            {/* 3. Laser */}
+            {localFlowStyle === 'laser' && (
+              <path
+                d={pathD}
+                fill="none"
+                stroke={color}
+                strokeWidth={3}
+                strokeDasharray="40,100"
+                style={{
+                  animation: 'trace-flow-laser 2.5s infinite linear, trace-flow-hue 6s infinite linear',
+                  filter: `drop-shadow(0 0 5px ${color})`,
+                }}
+              />
+            )}
+
+            {/* 4. Droplet */}
+            {localFlowStyle === 'droplet' && (
+              <>
+                <circle r="5" fill={color} style={{ filter: `drop-shadow(0 0 4px ${color})` }}>
+                  <animateMotion dur={duration} repeatCount="indefinite" path={pathD} />
+                </circle>
+                <circle r="3.5" fill={color} opacity={0.75} style={{ filter: `drop-shadow(0 0 3px ${color})` }}>
+                  <animateMotion dur={duration} repeatCount="indefinite" path={pathD} begin="-0.12s" />
+                </circle>
+                <circle r="2.2" fill={color} opacity={0.45} style={{ filter: `drop-shadow(0 0 2px ${color})` }}>
+                  <animateMotion dur={duration} repeatCount="indefinite" path={pathD} begin="-0.24s" />
+                </circle>
+              </>
+            )}
+
+            {/* 5. Aurora Trail */}
+            {localFlowStyle === 'aurora' && (
+              <>
+                {[...Array(6)].map((_, i) => {
+                  const delaySec = -(i * 0.08)
+                  const opacity = 1.0 - (i / 6)
+                  const r = Math.max(1, 6.0 - i * 0.75)
+                  return (
+                    <circle
+                      key={i}
+                      r={r}
+                      fill={color}
+                      opacity={opacity}
+                      style={{
+                        filter: `drop-shadow(0 0 ${12 - i * 1.5}px ${color})`,
+                      }}
+                    >
+                      <animateMotion dur={duration} repeatCount="indefinite" path={pathD} begin={`${delaySec}s`} />
+                    </circle>
+                  )
+                })}
+              </>
+            )}
+
+            {/* 6. Protocol Pill */}
+            {localFlowStyle === 'pill' && (
+              <g>
+                <animateMotion dur={duration} repeatCount="indefinite" path={pathD} />
+                <circle
+                  cx={18}
+                  cy={0}
+                  r="3.5"
+                  fill={color}
+                  style={{
+                    filter: `drop-shadow(0 0 6px ${color})`,
+                  }}
+                />
+                <rect
+                  x={-22}
+                  y={-7}
+                  width={44}
+                  height={14}
+                  rx={4}
+                  fill="rgba(15, 23, 42, 0.9)"
+                  stroke={color}
+                  strokeWidth={1.2}
+                  style={{
+                    filter: 'drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5))',
+                  }}
+                />
+                <text
+                  x={0}
+                  y={1.5}
+                  textAnchor="middle"
+                  fill="#ffffff"
+                  fontSize="7.5px"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  {((arrow.props as any)?.text || 'DATA').substring(0, 7)}
+                </text>
+              </g>
+            )}
           </g>
         )
       })}
@@ -195,7 +346,6 @@ function GuidedTourLayer({
 
 
 function PlaybackControllerWidget({
-  editor,
   activeTpl,
   updateTpl
 }: {
@@ -203,78 +353,26 @@ function PlaybackControllerWidget({
   activeTpl: InsertedTemplate
   updateTpl: (patch: Partial<InsertedTemplate>) => void
 }) {
-  const activeLevel = activeTpl.detailLevel
   const isPlaying = activeTpl.isPlaying ?? false
-  const activeScenarioId = activeTpl.activeScenarioId
-  const currentStep = activeTpl.currentStepIndex ?? 0
   const speed = activeTpl.speed ?? 1
 
-  const activeScenario = activeTpl.graph.scenarios.find((s) => s.id === activeScenarioId)
-  const maxSteps = activeScenario ? activeScenario.steps.length : 0
-
-  const handleLevelChange = (lvl: number) => {
-    updateTpl({ detailLevel: lvl })
-    // Re-render template on the canvas via adapter
-    const bounds = editor.getCurrentPageShapes().find(
-      (s: any) => (s.meta as any)?.templateId === activeTpl.templateId
-    )
-    if (bounds) {
-      const adapter = new TldrawRendererAdapter(editor, { x: bounds.x, y: bounds.y }, activeTpl.templateId)
-      adapter.render(activeTpl.graph, lvl)
-    }
-  }
-
-  const handleNextStep = () => {
-    if (maxSteps > 0) {
-      updateTpl({ currentStepIndex: (currentStep + 1) % maxSteps })
-    }
-  }
-
-  const handlePrevStep = () => {
-    if (maxSteps > 0) {
-      updateTpl({ currentStepIndex: (currentStep - 1 + maxSteps) % maxSteps })
-    }
-  }
+  if (!activeTpl.graph.animation) return null
 
   return (
     <div className="pointer-events-none absolute bottom-6 left-0 right-0 z-40 flex justify-center">
       <div className="pointer-events-auto flex items-center gap-4 rounded-full border border-line bg-surface/95 px-5 py-2.5 shadow-[0_20px_50px_-16px_rgba(0,0,0,.3)] backdrop-blur transition-all">
         {/* Playback Controls */}
         <div className="flex items-center gap-2">
-          {activeTpl.graph.animation && (
-            <button
-              onClick={() => updateTpl({ isPlaying: !isPlaying })}
-              className={
-                'grid h-8 w-8 place-items-center rounded-full text-paper transition-all ' +
-                (isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-ink hover:opacity-90')
-              }
-              title={isPlaying ? 'Pause animation' : 'Play flow animation'}
-            >
-              <Icon icon={isPlaying ? 'lucide:pause' : 'lucide:play'} width={16} />
-            </button>
-          )}
-
-          {activeScenarioId && (
-            <div className="flex items-center gap-1.5 border-l border-line pl-2">
-              <button
-                onClick={handlePrevStep}
-                className="grid h-8 w-8 place-items-center rounded-full text-grey-4 hover:bg-grey-1 hover:text-ink transition-colors"
-                title="Previous step"
-              >
-                <Icon icon="lucide:skip-back" width={16} />
-              </button>
-              <span className="text-[10px] font-mono font-semibold text-grey-3">
-                {currentStep + 1} / {maxSteps}
-              </span>
-              <button
-                onClick={handleNextStep}
-                className="grid h-8 w-8 place-items-center rounded-full text-grey-4 hover:bg-grey-1 hover:text-ink transition-colors"
-                title="Next step"
-              >
-                <Icon icon="lucide:skip-forward" width={16} />
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => updateTpl({ isPlaying: !isPlaying })}
+            className={
+              'grid h-8 w-8 place-items-center rounded-full text-paper transition-all ' +
+              (isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-ink hover:opacity-90')
+            }
+            title={isPlaying ? 'Pause animation' : 'Play flow animation'}
+          >
+            <Icon icon={isPlaying ? 'lucide:pause' : 'lucide:play'} width={16} />
+          </button>
         </div>
 
         {/* Speed adjuster */}
@@ -290,45 +388,6 @@ function PlaybackControllerWidget({
             </button>
           </>
         )}
-
-
-        <span className="h-4 w-px bg-line" />
-
-        {/* Scenario Picker */}
-        {activeTpl.graph.scenarios && activeTpl.graph.scenarios.length > 0 && (
-          <div className="flex items-center gap-1 text-xs">
-            <span className="text-grey-3">Scenario:</span>
-            <select
-              value={activeScenarioId || ''}
-              onChange={(e) => updateTpl({ activeScenarioId: e.target.value || undefined, currentStepIndex: 0 })}
-              className="bg-transparent font-bold outline-none cursor-pointer text-ink text-xs"
-            >
-              <option value="">Static View</option>
-              {activeTpl.graph.scenarios.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <span className="h-4 w-px bg-line" />
-
-        {/* Detail Level selector */}
-        <div className="flex items-center gap-1 text-xs">
-          <span className="text-grey-3">Detail:</span>
-          <select
-            value={activeLevel}
-            onChange={(e) => handleLevelChange(Number(e.target.value))}
-            className="bg-transparent font-bold outline-none cursor-pointer text-ink text-xs"
-          >
-            <option value={1}>L1: Executive</option>
-            <option value={2}>L2: Engineering</option>
-            <option value={3}>L3: Production</option>
-            <option value={4}>L4: Implementation</option>
-          </select>
-        </div>
       </div>
     </div>
   )

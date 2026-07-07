@@ -27,7 +27,7 @@ export const TOOLBAR_TOOLS: ToolDef[] = [
   { id: 'arrow', label: 'Arrow — A', icon: 'lucide:move-up-right' },
   { id: 'text', label: 'Text — T', icon: 'lucide:type' },
   { id: 'note', label: 'Sticky note — N', icon: 'lucide:sticky-note' },
-  { id: 'highlight', label: 'Highlighter', icon: 'lucide:highlighter' },
+  { id: 'highlight', label: 'Highlighter — G', icon: 'lucide:highlighter' },
   { id: 'eraser', label: 'Eraser — E', icon: 'lucide:eraser' },
 ]
 

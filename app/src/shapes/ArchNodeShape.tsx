@@ -141,7 +141,7 @@ export class ArchNodeShapeUtil extends BaseBoxShapeUtil<ArchNodeShape> {
           gap: 12,
           padding: '0 14px',
           background: 'var(--color-surface)',
-          border: '1px solid var(--color-line)',
+          border: 'var(--shape-outline-thickness, 1.8px) solid var(--color-line)',
           borderRadius: 16,
           boxShadow: '0 1px 2px rgba(0,0,0,.06), 0 8px 20px -12px rgba(0,0,0,.28)',
           fontFamily: fontFamily || "var(--font-sans)",

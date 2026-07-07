@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { motion } from 'framer-motion'
 import { useDocStore } from '../store/useDocStore'
 import { useEditorUi } from '../store/useEditorUi'
@@ -55,6 +56,57 @@ export function IconRail() {
     setInspectorOpen(!inspectorOpen)
   }
 
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return
+      if (e.metaKey || e.ctrlKey) return
+
+      const key = e.key.toLowerCase()
+
+      // Alt/Option shortcuts
+      if (e.altKey) {
+        if (key === 'd') {
+          e.preventDefault()
+          toggleDocOnly()
+        } else if (key === 'c') {
+          e.preventDefault()
+          toggleDslOnly()
+        } else if (key === 'i') {
+          e.preventDefault()
+          toggleInspectorOnly()
+        }
+        return
+      }
+
+      // Single-key shortcuts
+      if (key === 'u') {
+        e.preventDefault()
+        openFlyout('insert')
+      } else if (e.key === '/') {
+        e.preventDefault()
+        openFlyout('search')
+      } else if (key === 'p') {
+        e.preventDefault()
+        openFlyout('snapshots')
+      } else if (key === 'y') {
+        e.preventDefault()
+        openFlyout('layers')
+      } else if (key === 'w') {
+        e.preventDefault()
+        openFlyout('shapes')
+      } else if (key === 'i') {
+        e.preventDefault()
+        openFlyout('icons')
+      } else if (key === 'z') {
+        e.preventDefault()
+        openFlyout('catalog')
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [flyout, viewMode, dslOpen, inspectorOpen, editor])
+
   return (
     <nav data-tour="left-rail" className="flex w-14 flex-none flex-col items-center gap-1 border-r border-line bg-paper py-3">
       <RailButton
@@ -69,21 +121,21 @@ export function IconRail() {
 
       <div className="my-1 h-px w-6 bg-line" />
 
-      <RailButton icon="insert" label="Insert items" active={flyout === 'insert'} onClick={() => openFlyout('insert')} />
-      <RailButton icon="searchCanvas" label="Search canvas" active={flyout === 'search'} onClick={() => openFlyout('search')} />
-      <RailButton icon="snapshots" label="Snapshots" active={flyout === 'snapshots'} onClick={() => openFlyout('snapshots')} />
-      <RailButton icon="layers" label="Layers" active={flyout === 'layers'} onClick={() => openFlyout('layers')} />
-      <RailButton icon="shapes" label="Device frames" active={flyout === 'shapes'} onClick={() => openFlyout('shapes')} />
-      <RailButton icon="icons" label="Icons" active={flyout === 'icons'} onClick={() => openFlyout('icons')} />
-      <RailButton icon="catalog" label="Diagram catalog" active={flyout === 'catalog'} onClick={() => openFlyout('catalog')} />
+      <RailButton icon="insert" label="Insert items — U" active={flyout === 'insert'} onClick={() => openFlyout('insert')} />
+      <RailButton icon="searchCanvas" label="Search canvas — /" active={flyout === 'search'} onClick={() => openFlyout('search')} />
+      <RailButton icon="snapshots" label="Snapshots — P" active={flyout === 'snapshots'} onClick={() => openFlyout('snapshots')} />
+      <RailButton icon="layers" label="Layers — Y" active={flyout === 'layers'} onClick={() => openFlyout('layers')} />
+      <RailButton icon="shapes" label="Device frames — W" active={flyout === 'shapes'} onClick={() => openFlyout('shapes')} />
+      <RailButton icon="icons" label="Icons — I" active={flyout === 'icons'} onClick={() => openFlyout('icons')} />
+      <RailButton icon="catalog" label="Diagram catalog — Z" active={flyout === 'catalog'} onClick={() => openFlyout('catalog')} />
 
       <div className="my-1 h-px w-6 bg-line" />
 
-      <RailButton icon="doc" label="Document" active={viewMode !== 'canvas'} onClick={toggleDocOnly} />
-      <RailButton icon="code" label="DSL" active={dslOpen} onClick={toggleDslOnly} tourId="dsl-toggle" />
+      <RailButton icon="doc" label="Document — Alt+D" active={viewMode !== 'canvas'} onClick={toggleDocOnly} />
+      <RailButton icon="code" label="DSL — Alt+C" active={dslOpen} onClick={toggleDslOnly} tourId="dsl-toggle" />
 
       <div className="mt-auto" />
-      <RailButton icon="panelRight" label="Inspector" active={inspectorOpen} onClick={toggleInspectorOnly} tourId="inspector-toggle" />
+      <RailButton icon="panelRight" label="Inspector — Alt+I" active={inspectorOpen} onClick={toggleInspectorOnly} tourId="inspector-toggle" />
     </nav>
   )
 }
@@ -128,4 +180,9 @@ function RailButton({
       </span>
     </button>
   )
+}
+
+const isEditableTarget = (target: EventTarget | null) => {
+  const node = target as HTMLElement | null
+  return !!node?.closest('input, textarea, select, [contenteditable="true"], .monaco-editor, [data-canvas-editor-block="true"]')
 }

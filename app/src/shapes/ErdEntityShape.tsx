@@ -99,7 +99,7 @@ export class ErdEntityShapeUtil extends BaseBoxShapeUtil<ErdEntityShape> {
           width: w,
           height: shape.props.h,
           borderRadius: 10,
-          border: `1px solid ${border}`,
+          border: `var(--shape-outline-thickness, 1.8px) solid ${border}`,
           background: 'var(--color-surface)',
           overflow: 'hidden',
           boxShadow: '0 4px 24px -10px rgba(0,0,0,.25)',

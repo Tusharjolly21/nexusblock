@@ -47,12 +47,16 @@ export function TraceFlowOverlay() {
           to { stroke-dashoffset: -40; }
         }
         @keyframes trace-flow-laser {
-          0%, 100% { stroke-dasharray: 20, 160; stroke-dashoffset: 0; }
-          50% { stroke-dasharray: 80, 100; stroke-dashoffset: -80; }
+          from { stroke-dashoffset: 140; }
+          to { stroke-dashoffset: 0; }
         }
         @keyframes trace-flow-hue {
           from { filter: hue-rotate(0deg) drop-shadow(0 0 5px #f43f5e); }
           to { filter: hue-rotate(360deg) drop-shadow(0 0 5px #f43f5e); }
+        }
+        @keyframes trace-conduit-pulse {
+          0%, 100% { opacity: 0.2; stroke-width: 1.2px; }
+          50% { opacity: 0.5; stroke-width: 2.2px; }
         }
       `}} />
       <svg className="h-full w-full">
@@ -69,88 +73,176 @@ export function TraceFlowOverlay() {
             .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
             .join(' ')
 
+          // Resolve overrides from arrow meta with global fallbacks
+          const color = (arrow.meta as any)?.flowColor || '#3b82f6'
+          const rawSpeed = (arrow.meta as any)?.flowSpeed || 2.2
+          const duration = `${rawSpeed}s`
+          const localFlowStyle = (arrow.meta as any)?.flowStyle || flowAnimationStyle
+
           return (
             <g key={arrow.id}>
+              {/* Pulsating neon conduit backdrop line */}
+              <path
+                d={d}
+                fill="none"
+                stroke={color}
+                strokeWidth={1.5}
+                style={{
+                  animation: 'trace-conduit-pulse 2s infinite ease-in-out',
+                  filter: `drop-shadow(0 0 3px ${color})`,
+                }}
+              />
+
               {/* Reference path for offset motion */}
               <path d={d} fill="none" stroke="transparent" strokeWidth={1} id={`path-${arrow.id}`} />
-              
+
               {/* Particle animation */}
-              {flowAnimationStyle === 'particle' && (
+              {localFlowStyle === 'particle' && (
                 <circle
                   r={4 * Math.max(0.6, Math.min(1.4, cam.z))}
-                  fill="#60a5fa"
+                  fill={color}
                   style={{
                     offsetPath: `path('${d}')`,
-                    animation: 'trace-flow-move 2.2s infinite linear',
-                    filter: 'drop-shadow(0 0 4px #3b82f6) drop-shadow(0 0 8px #60a5fa)',
+                    animation: `trace-flow-move ${duration} infinite linear`,
+                    filter: `drop-shadow(0 0 4px ${color})`,
                   }}
                 />
               )}
 
               {/* Dashed Pipeline animation */}
-              {flowAnimationStyle === 'dashes' && (
+              {localFlowStyle === 'dashes' && (
                 <path
                   d={d}
                   fill="none"
-                  stroke="#38bdf8"
+                  stroke={color}
                   strokeWidth={2.5}
                   strokeDasharray="12,12"
                   style={{
-                    animation: 'trace-flow-dashes 1.2s infinite linear',
-                    filter: 'drop-shadow(0 0 4px #0ea5e9)',
+                    animation: `trace-flow-dashes ${duration} infinite linear`,
+                    filter: `drop-shadow(0 0 4px ${color})`,
                   }}
                 />
               )}
 
               {/* Rainbow Spectrum Laser animation */}
-              {flowAnimationStyle === 'laser' && (
+              {localFlowStyle === 'laser' && (
                 <path
                   d={d}
                   fill="none"
-                  stroke="#f43f5e"
+                  stroke={color}
                   strokeWidth={3}
+                  strokeDasharray="40,100"
                   style={{
-                    animation: 'trace-flow-laser 2.5s infinite linear, trace-flow-hue 6s infinite linear',
-                    filter: 'drop-shadow(0 0 5px #f43f5e)',
+                    animation: `trace-flow-laser ${duration} infinite linear, trace-flow-hue 6s infinite linear`,
+                    filter: `drop-shadow(0 0 5px ${color})`,
                   }}
                 />
               )}
 
               {/* Trailing Droplets animation */}
-              {flowAnimationStyle === 'droplet' && (
+              {localFlowStyle === 'droplet' && (
                 <>
                   <circle
                     r={5 * Math.max(0.6, Math.min(1.4, cam.z))}
-                    fill="#10b981"
+                    fill={color}
                     style={{
                       offsetPath: `path('${d}')`,
-                      animation: 'trace-flow-move 2s infinite linear',
-                      filter: 'drop-shadow(0 0 4px #10b981)',
+                      animation: `trace-flow-move ${duration} infinite linear`,
+                      filter: `drop-shadow(0 0 4px ${color})`,
                     }}
                   />
                   <circle
                     r={3.5 * Math.max(0.6, Math.min(1.4, cam.z))}
-                    fill="#34d399"
+                    fill={color}
                     style={{
                       offsetPath: `path('${d}')`,
-                      animation: 'trace-flow-move 2s infinite linear',
+                      animation: `trace-flow-move ${duration} infinite linear`,
                       animationDelay: '-0.12s',
-                      filter: 'drop-shadow(0 0 3px #34d399)',
+                      filter: `drop-shadow(0 0 3px ${color})`,
                       opacity: 0.75,
                     }}
                   />
                   <circle
                     r={2.2 * Math.max(0.6, Math.min(1.4, cam.z))}
-                    fill="#a7f3d0"
+                    fill={color}
                     style={{
                       offsetPath: `path('${d}')`,
-                      animation: 'trace-flow-move 2s infinite linear',
+                      animation: `trace-flow-move ${duration} infinite linear`,
                       animationDelay: '-0.24s',
-                      filter: 'drop-shadow(0 0 2px #a7f3d0)',
+                      filter: `drop-shadow(0 0 2px ${color})`,
                       opacity: 0.45,
                     }}
                   />
                 </>
+              )}
+
+              {/* Aurora Trail animation */}
+              {localFlowStyle === 'aurora' && (
+                <>
+                  {[...Array(6)].map((_, i) => {
+                    const delaySec = -(i * 0.08)
+                    const opacity = 1.0 - (i / 6)
+                    const r = (6.0 - i * 0.75) * Math.max(0.6, Math.min(1.4, cam.z))
+                    return (
+                      <circle
+                        key={i}
+                        r={Math.max(1, r)}
+                        fill={color}
+                        style={{
+                          offsetPath: `path('${d}')`,
+                          animation: `trace-flow-move ${duration} infinite linear`,
+                          animationDelay: `${delaySec}s`,
+                          filter: `drop-shadow(0 0 ${12 - i * 1.5}px ${color})`,
+                          opacity: opacity,
+                        }}
+                      />
+                    )
+                  })}
+                </>
+              )}
+
+              {/* Protocol Packet Pill animation */}
+              {localFlowStyle === 'pill' && (
+                <g
+                  style={{
+                    offsetPath: `path('${d}')`,
+                    animation: `trace-flow-move ${duration} infinite linear`,
+                  }}
+                >
+                  <circle
+                    cx={18}
+                    cy={0}
+                    r={3.5 * Math.max(0.6, Math.min(1.4, cam.z))}
+                    fill={color}
+                    style={{
+                      filter: `drop-shadow(0 0 6px ${color})`,
+                    }}
+                  />
+                  <rect
+                    x={-22}
+                    y={-7}
+                    width={44}
+                    height={14}
+                    rx={4}
+                    fill="rgba(15, 23, 42, 0.9)"
+                    stroke={color}
+                    strokeWidth={1.2}
+                    style={{
+                      filter: 'drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5))',
+                    }}
+                  />
+                  <text
+                    x={0}
+                    y={1.5}
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    fontSize="7.5px"
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                  >
+                    {((arrow.meta as any)?.flowLabel || (arrow.props as any)?.text || 'DATA').substring(0, 7)}
+                  </text>
+                </g>
               )}
             </g>
           )

@@ -27,6 +27,8 @@ type NodeSpec = {
   tech?: string
   kind?: NodeKind
   icon?: string
+  w?: number
+  h?: number
 }
 
 type FrameSpec = {
@@ -52,6 +54,8 @@ function node(editor: Editor, origin: VecLike, spec: NodeSpec) {
     label: spec.label,
     tech: spec.tech ?? '',
     icon: spec.icon,
+    w: spec.w,
+    h: spec.h,
     point: { x: origin.x + spec.x, y: origin.y + spec.y },
   })
 }
@@ -439,4 +443,192 @@ export const DIAGRAM_CATALOG: DiagramCatalogItem[] = [
     complexity: 'Senior',
     insert: insertRealtimeMessaging,
   },
+  {
+    id: 'simple-notification-service',
+    title: 'Simple Notification Service',
+    subtitle: 'Shopify, RabbitMQ, PostgreSQL, Twilio, SendGrid',
+    description: 'A beginner-friendly cloud notification service architecture capable of processing multi-channel notifications asynchronously.',
+    kind: 'architecture',
+    icon: 'lucide:bell-ring',
+    logos: ['logos:shopify', 'logos:rabbitmq-icon', 'logos:postgresql', 'logos:twilio', 'logos:sendgrid-icon'],
+    tags: ['Agnostic', 'Notifications', 'RabbitMQ', 'PostgreSQL', 'Twilio'],
+    accent: 'blue',
+    complexity: 'Starter',
+    insert: insertSimpleNotification,
+  },
+  {
+    id: 'image-upload-processing',
+    title: 'Image Upload and Processing Pipeline',
+    subtitle: 'S3, RabbitMQ, Rust, Sharp, Cloudflare, MongoDB',
+    description: 'An intermediate media processing architecture displaying multi-worker validation, resizing, CDN delivery caching and metadata indexing.',
+    kind: 'architecture',
+    icon: 'lucide:upload-cloud',
+    logos: ['logos:aws-s3', 'logos:rabbitmq-icon', 'logos:rust', 'logos:cloudflare', 'logos:mongodb-icon'],
+    tags: ['Agnostic', 'Media', 'S3', 'RabbitMQ', 'Rust', 'MongoDB'],
+    accent: 'orange',
+    complexity: 'Team',
+    insert: insertImageUpload,
+  },
+  {
+    id: 'simple-url-shortener',
+    title: 'Simple URL Shortener',
+    subtitle: 'Cloudflare, NGINX, Kong, Redis, PostgreSQL, Kafka',
+    description: 'A starter distributed systems architecture showing domain routing, rate limiting, distributed short ID generation, fast cache lookups and asynchronous analytics.',
+    kind: 'architecture',
+    icon: 'lucide:link',
+    logos: ['logos:cloudflare', 'logos:nginx', 'logos:kong', 'logos:redis', 'logos:postgresql'],
+    tags: ['Agnostic', 'Shortener', 'Redis', 'PostgreSQL', 'Kafka'],
+    accent: 'purple',
+    complexity: 'Starter',
+    insert: insertSimpleUrlShortener,
+  },
 ]
+
+function insertSimpleNotification(editor: Editor) {
+  insertBlueprint(editor, {
+    history: 'insert Simple Notification Service',
+    width: 2300,
+    height: 1250,
+    frames: [
+      { label: 'Event Producers', x: 80, y: 170, w: 360, h: 760, accent: 'sky' },
+      { label: 'Notification API', x: 530, y: 250, w: 360, h: 600, accent: 'amber' },
+      { label: 'Processing', x: 980, y: 130, w: 430, h: 850, accent: 'violet' },
+      { label: 'Delivery Providers', x: 1500, y: 110, w: 390, h: 900, accent: 'amber' },
+      { label: 'Storage and Monitoring', x: 1980, y: 220, w: 270, h: 700, accent: 'grey' }
+    ],
+    nodes: [
+      { key: 'order_service', x: 130, y: 280, w: 240, h: 110, label: 'Order Service', tech: 'Event Producer', icon: 'logos:shopify' },
+      { key: 'account_service', x: 130, y: 500, w: 240, h: 110, label: 'Account Service', tech: 'Event Producer', icon: 'lucide:user-round-cog' },
+      { key: 'admin_panel', x: 130, y: 720, w: 240, h: 110, label: 'Admin Panel', tech: 'Operator Dashboard', icon: 'lucide:panel-top' },
+      { key: 'notification_api', x: 590, y: 360, w: 240, h: 120, label: 'Notification API', tech: 'Ingress Controller', icon: 'lucide:bell-ring' },
+      { key: 'template_service', x: 590, y: 600, w: 240, h: 120, label: 'Template Service', tech: 'Handlebars Engine', icon: 'lucide:file-text' },
+      { key: 'notification_queue', x: 1040, y: 250, w: 260, h: 120, label: 'Notification Queue', tech: 'AMQP Exchange Broker', icon: 'logos:rabbitmq-icon', kind: 'queue' },
+      { key: 'notification_worker', x: 1040, y: 500, w: 260, h: 120, label: 'Notification Worker', tech: 'Node.js Consumer', icon: 'logos:nodejs-icon' },
+      { key: 'retry_queue', x: 1040, y: 750, w: 260, h: 120, label: 'Retry Queue', tech: 'DLQ with Backoff', icon: 'logos:rabbitmq-icon', kind: 'queue' },
+      { key: 'email_provider', x: 1560, y: 240, w: 250, h: 110, label: 'Email Provider', tech: 'SendGrid API Delivery', icon: 'logos:sendgrid-icon' },
+      { key: 'sms_provider', x: 1560, y: 470, w: 250, h: 110, label: 'SMS Provider', tech: 'Twilio SMS API Gateway', icon: 'logos:twilio' },
+      { key: 'push_provider', x: 1560, y: 700, w: 250, h: 110, label: 'Push Provider', tech: 'Firebase Cloud Messaging', icon: 'logos:firebase' },
+      { key: 'notification_db', x: 2010, y: 330, w: 210, h: 120, label: 'Notification Database', tech: 'PostgreSQL Relational DB', icon: 'logos:postgresql', kind: 'db' },
+      { key: 'delivery_log', x: 2010, y: 550, w: 210, h: 120, label: 'Delivery Log', tech: 'Elasticsearch Index', icon: 'logos:elasticsearch', kind: 'db' },
+      { key: 'monitoring', x: 2010, y: 770, w: 210, h: 120, label: 'Monitoring', tech: 'Datadog Agent & Dashboards', icon: 'logos:datadog' }
+    ],
+    edges: [
+      ['order_service', 'notification_api', 'Order confirmation event'],
+      ['account_service', 'notification_api', 'Password reset event'],
+      ['admin_panel', 'notification_api', 'Send campaign'],
+      ['notification_api', 'template_service', 'Load message template'],
+      ['template_service', 'notification_db', 'Read template and preferences'],
+      ['notification_api', 'notification_queue', 'Publish notification job'],
+      ['notification_queue', 'notification_worker', 'Consume job'],
+      ['notification_worker', 'email_provider', 'Send email'],
+      ['notification_worker', 'sms_provider', 'Send SMS'],
+      ['notification_worker', 'push_provider', 'Send push notification'],
+      ['email_provider', 'delivery_log', 'Delivery result'],
+      ['sms_provider', 'delivery_log', 'Delivery result'],
+      ['push_provider', 'delivery_log', 'Delivery result'],
+      ['notification_worker', 'retry_queue', 'Temporary failure'],
+      ['retry_queue', 'notification_worker', 'Retry with backoff'],
+      ['notification_worker', 'notification_db', 'Update notification status'],
+      ['delivery_log', 'monitoring', 'Metrics and failure counts']
+    ]
+  })
+}
+
+function insertImageUpload(editor: Editor) {
+  insertBlueprint(editor, {
+    history: 'insert Image Upload and Processing Pipeline',
+    width: 2350,
+    height: 1250,
+    frames: [
+      { label: 'Clients', x: 70, y: 220, w: 300, h: 650, accent: 'sky' },
+      { label: 'API Layer', x: 460, y: 180, w: 380, h: 720, accent: 'amber' },
+      { label: 'Upload and Ingest', x: 930, y: 120, w: 420, h: 850, accent: 'violet' },
+      { label: 'Image Processing', x: 1440, y: 120, w: 420, h: 850, accent: 'amber' },
+      { label: 'Delivery and Data', x: 1950, y: 160, w: 330, h: 800, accent: 'grey' }
+    ],
+    nodes: [
+      { key: 'user', x: 115, y: 350, w: 220, h: 110, label: 'User', tech: 'Client Browser', icon: 'lucide:user' },
+      { key: 'web_app', x: 115, y: 590, w: 220, h: 110, label: 'Web or Mobile App', tech: 'Frontend Interface', icon: 'lucide:monitor-smartphone' },
+      { key: 'api_gateway', x: 520, y: 300, w: 250, h: 120, label: 'API Gateway', tech: 'AWS API Gateway', icon: 'logos:aws-api-gateway' },
+      { key: 'upload_service', x: 520, y: 550, w: 250, h: 120, label: 'Upload Service', tech: 'Node.js Endpoint', icon: 'logos:nodejs-icon' },
+      { key: 'metadata_service', x: 520, y: 780, w: 250, h: 120, label: 'Metadata Service', tech: 'Python Endpoint', icon: 'logos:python' },
+      { key: 'source_storage', x: 990, y: 240, w: 260, h: 120, label: 'Source Image Storage', tech: 'AWS S3 Ingest', icon: 'logos:aws-s3', kind: 'db' },
+      { key: 'upload_events', x: 990, y: 500, w: 260, h: 120, label: 'Upload Event Queue', tech: 'RabbitMQ Event Queue', icon: 'logos:rabbitmq-icon', kind: 'queue' },
+      { key: 'validation_worker', x: 990, y: 760, w: 260, h: 120, label: 'Validation Worker', tech: 'Rust Checker', icon: 'logos:rust' },
+      { key: 'resize_worker', x: 1500, y: 240, w: 260, h: 120, label: 'Resize Worker', tech: 'Sharp Image Node.js', icon: 'logos:nodejs-icon' },
+      { key: 'optimization_worker', x: 1500, y: 500, w: 260, h: 120, label: 'Optimization Worker', tech: 'Go Optimizer', icon: 'logos:go' },
+      { key: 'processed_storage', x: 1500, y: 760, w: 260, h: 120, label: 'Processed Image Storage', tech: 'AWS S3 Output', icon: 'logos:aws-s3', kind: 'db' },
+      { key: 'cdn', x: 2000, y: 280, w: 230, h: 120, label: 'Image CDN', tech: 'Cloudflare Edge CDN', icon: 'logos:cloudflare' },
+      { key: 'metadata_db', x: 2000, y: 540, w: 230, h: 120, label: 'Metadata Database', tech: 'MongoDB Atlas NoSQL', icon: 'logos:mongodb-icon', kind: 'db' },
+      { key: 'monitoring', x: 2000, y: 800, w: 230, h: 120, label: 'Monitoring', tech: 'Datadog metrics dashboards', icon: 'logos:datadog' }
+    ],
+    edges: [
+      ['user', 'web_app', 'Select image'],
+      ['web_app', 'api_gateway', 'Request upload session'],
+      ['api_gateway', 'upload_service', 'Create upload URL'],
+      ['upload_service', 'web_app', 'Return signed upload URL'],
+      ['web_app', 'source_storage', 'Upload original image'],
+      ['source_storage', 'upload_events', 'Object-created event'],
+      ['upload_events', 'validation_worker', 'Validate image'],
+      ['validation_worker', 'resize_worker', 'Valid image'],
+      ['validation_worker', 'monitoring', 'Invalid image alert'],
+      ['resize_worker', 'optimization_worker', 'Create size variants'],
+      ['optimization_worker', 'processed_storage', 'Write WebP and thumbnails'],
+      ['processed_storage', 'cdn', 'Serve cached images'],
+      ['metadata_service', 'metadata_db', 'Store image metadata'],
+      ['optimization_worker', 'metadata_service', 'Publish processing result'],
+      ['web_app', 'cdn', 'Request image'],
+      ['cdn', 'web_app', 'Deliver optimized image'],
+      ['resize_worker', 'monitoring', 'Processing metrics'],
+      ['optimization_worker', 'monitoring', 'Optimization metrics']
+    ]
+  })
+}
+
+function insertSimpleUrlShortener(editor: Editor) {
+  insertBlueprint(editor, {
+    history: 'insert Simple URL Shortener',
+    width: 2200,
+    height: 1200,
+    frames: [
+      { label: 'Clients', x: 80, y: 180, w: 300, h: 680, accent: 'sky' },
+      { label: 'Edge Layer', x: 470, y: 180, w: 360, h: 680, accent: 'amber' },
+      { label: 'Application Services', x: 920, y: 120, w: 430, h: 820, accent: 'violet' },
+      { label: 'Data Layer', x: 1460, y: 120, w: 420, h: 820, accent: 'amber' },
+      { label: 'Analytics', x: 1940, y: 360, w: 240, h: 420, accent: 'grey' }
+    ],
+    nodes: [
+      { key: 'user', x: 120, y: 280, w: 220, h: 110, label: 'User', tech: 'Client Browser', icon: 'lucide:user' },
+      { key: 'browser', x: 120, y: 500, w: 220, h: 110, label: 'Web or Mobile App', tech: 'Frontend App', icon: 'lucide:monitor-smartphone' },
+      { key: 'dns', x: 520, y: 260, w: 220, h: 110, label: 'DNS', tech: 'Cloudflare DNS', icon: 'logos:cloudflare' },
+      { key: 'load_balancer', x: 520, y: 480, w: 220, h: 110, label: 'Load Balancer', tech: 'NGINX proxy', icon: 'logos:nginx' },
+      { key: 'api_gateway', x: 520, y: 700, w: 220, h: 110, label: 'API Gateway', tech: 'Kong Gateway', icon: 'logos:kong' },
+      { key: 'shortener_service', x: 980, y: 250, w: 260, h: 120, label: 'Shortener Service', tech: 'Node.js service', icon: 'logos:nodejs-icon' },
+      { key: 'redirect_service', x: 980, y: 500, w: 260, h: 120, label: 'Redirect Service', tech: 'Go redirect engine', icon: 'logos:go' },
+      { key: 'id_generator', x: 980, y: 750, w: 260, h: 120, label: 'ID Generator', tech: 'Rust ID Factory', icon: 'logos:rust' },
+      { key: 'cache', x: 1520, y: 250, w: 250, h: 120, label: 'Redis Cache', tech: 'Redis Memory Store', icon: 'logos:redis', kind: 'db' },
+      { key: 'url_database', x: 1520, y: 500, w: 250, h: 120, label: 'URL Database', tech: 'PostgreSQL Relational DB', icon: 'logos:postgresql', kind: 'db' },
+      { key: 'event_queue', x: 1520, y: 750, w: 250, h: 120, label: 'Click Event Queue', tech: 'Apache Kafka Event Buffer', icon: 'logos:kafka-icon', kind: 'queue' },
+      { key: 'analytics_worker', x: 1950, y: 470, w: 210, h: 120, label: 'Analytics Worker', tech: 'Python Stream Reader', icon: 'logos:python' },
+      { key: 'analytics_db', x: 1950, y: 650, w: 210, h: 120, label: 'Analytics Store', tech: 'ClickHouse Column DB', icon: 'logos:clickhouse', kind: 'db' }
+    ],
+    edges: [
+      ['user', 'browser', 'Enter long URL or open short URL'],
+      ['browser', 'dns', 'Resolve domain'],
+      ['dns', 'load_balancer', 'Route request'],
+      ['load_balancer', 'api_gateway', 'Forward request'],
+      ['api_gateway', 'shortener_service', 'Create short URL'],
+      ['shortener_service', 'id_generator', 'Generate short code'],
+      ['shortener_service', 'url_database', 'Store URL mapping'],
+      ['shortener_service', 'cache', 'Warm cache'],
+      ['api_gateway', 'redirect_service', 'Resolve short URL'],
+      ['redirect_service', 'cache', 'Read cached URL'],
+      ['cache', 'url_database', 'Cache miss'],
+      ['redirect_service', 'browser', 'HTTP 301 or 302 redirect'],
+      ['redirect_service', 'event_queue', 'Publish click event'],
+      ['event_queue', 'analytics_worker', 'Consume events'],
+      ['analytics_worker', 'analytics_db', 'Store aggregated metrics']
+    ]
+  })
+}
+

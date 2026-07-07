@@ -148,7 +148,7 @@ function CodeBlock({ shape, editor, isEditing }: { shape: CodeBlockShape; editor
         height: '100%',
         overflow: 'hidden',
         borderRadius: 14,
-        border: isEditing ? '1px solid var(--color-ink)' : '1px solid var(--color-line)',
+        border: isEditing ? 'var(--shape-outline-thickness, 1.8px) solid var(--color-ink)' : 'var(--shape-outline-thickness, 1.8px) solid var(--color-line)',
         background: dark ? '#0d0d0d' : '#fbfbfa',
         boxShadow: '0 18px 45px rgba(15, 23, 42, 0.14)',
         fontFamily: 'var(--font-mono)',

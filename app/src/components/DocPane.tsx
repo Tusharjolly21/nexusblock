@@ -5,7 +5,7 @@ import { BlockNoteView } from '@blocknote/mantine'
 import { BlockNoteSchema, defaultBlockSpecs, insertOrUpdateBlockForSlashMenu, filterSuggestionItems, type PartialBlock } from '@blocknote/core'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import '@blocknote/core/fonts/inter.css'
 import '@blocknote/mantine/style.css'
 import { useDocStore } from '../store/useDocStore'
@@ -56,6 +56,7 @@ users.id < projects.ownerId
  * localStorage; Phase 2 swaps the store for Liveblocks/Yjs.
  */
 export function DocPane() {
+  const navigate = useNavigate()
   const markSaved = useDocStore((s) => s.markSaved)
   const file = useApp(selectCurrentFile)
   const fileId = file?.id ?? 'scratch'
@@ -100,6 +101,18 @@ export function DocPane() {
     },
     [fileId, live, liveToken, ownerUid],
   )
+
+  const persist = () => {
+    // Read-only viewers never write back (locally or to the cloud).
+    if (!canEdit) return
+    const json = JSON.stringify(editor.document)
+    localStorage.setItem(storageKey, json)
+    markSaved()
+    // Edits to a shared file write back to the OWNER's copy.
+    const target = sharedFrom ?? useAuth.getState().uid
+    if (target && cloudEnabled()) pushContent(target, fileId, { doc: json }).catch(() => {})
+  }
+
   const setDocExporter = useDocStore((s) => s.setDocExporter)
   const setDocBridge = useDocStore((s) => s.setDocBridge)
   const setFigureReferences = useDocStore((s) => s.setFigureReferences)
@@ -331,10 +344,59 @@ export function DocPane() {
       }
     }
 
+    const checkFigureTransclusions = async () => {
+      const tldr = useDocStore.getState().editor
+      if (!tldr) return
+      let changed = false
+      for (const block of editor.document) {
+        if (block.type === 'paragraph') {
+          const text = blockPlainText(block)
+          const match = text.match(/^!\[\[(.*?)\]\]$/)
+          if (match) {
+            const figName = match[1].trim()
+            // Find a group-frame with matching label or ID
+            const shapes = tldr.getCurrentPageShapes()
+            const frame = shapes.find(
+              (s) =>
+                s.type === 'group-frame' &&
+                (s.id === figName ||
+                  s.id.replace(/^shape:/, '') === figName ||
+                  String((s.props as any)?.label || '').toLowerCase() === figName.toLowerCase())
+            )
+            if (frame) {
+              const src = await snapshotFigure(tldr, frame.id)
+              const content = await captureFigureContent(tldr, frame.id)
+              if (src) {
+                editor.updateBlock(block, {
+                  type: 'diagram',
+                  props: {
+                    src,
+                    caption: String((frame.props as any)?.label || 'Figure'),
+                    figureId: frame.id,
+                    content: content ?? '',
+                    width: '100%',
+                    alignment: 'center'
+                  }
+                } as any)
+                changed = true
+              }
+            }
+          }
+        }
+      }
+      if (changed) {
+        persist()
+      }
+    }
+
     const bridge = { jumpToFigure, refreshFigureEmbeds, restoreDiagramToCanvas, insertFigureReference, insertDslBlock, applyDslBlock, jumpToHeading, jumpToFrame, linkHeadingToFrame, unlinkFrame, collectHeadingLinks, getActiveDocBlock }
     bridgeRef.current = bridge
     setDocBridge(bridge)
-    const collectAll = () => { collectReferences(); collectHeadingLinks() }
+    const collectAll = () => {
+      collectReferences()
+      collectHeadingLinks()
+      void checkFigureTransclusions()
+    }
     collectAll()
     const stop = editor.onChange(collectAll)
     return () => {
@@ -423,16 +485,7 @@ export function DocPane() {
     return () => { cancelled = true; provider.off('sync', onSync) }
   }, [collab, editor, storageKey, file?.template, sharedFrom, fileId])
 
-  const persist = () => {
-    // Read-only viewers never write back (locally or to the cloud).
-    if (!canEdit) return
-    const json = JSON.stringify(editor.document)
-    localStorage.setItem(storageKey, json)
-    markSaved()
-    // Edits to a shared file write back to the OWNER's copy.
-    const target = sharedFrom ?? useAuth.getState().uid
-    if (target && cloudEnabled()) pushContent(target, fileId, { doc: json }).catch(() => {})
-  }
+
 
   const handlePaste = (event: React.ClipboardEvent) => {
     const text = event.clipboardData.getData('text/plain')
@@ -446,12 +499,59 @@ export function DocPane() {
     persist()
   }
 
+  const handleDocClick = (e: React.MouseEvent) => {
+    const selection = window.getSelection()
+    if (!selection || !selection.anchorNode) return
+
+    const fullText = selection.anchorNode.textContent || ''
+    const wikilinkRegex = /\[\[(.*?)\]\]/g
+    let match
+    while ((match = wikilinkRegex.exec(fullText)) !== null) {
+      const linkText = match[1].trim()
+      const offset = selection.anchorOffset
+      const matchStart = match.index
+      const matchEnd = matchStart + match[0].length
+      if (offset >= matchStart && offset <= matchEnd) {
+        e.preventDefault()
+        
+        // Try page navigation inside current document
+        const tldr = useDocStore.getState().editor
+        if (tldr) {
+          const pages = tldr.getPages()
+          const pageMatch = pages.find(
+            (p) =>
+              p.name.toLowerCase() === linkText.toLowerCase() ||
+              p.id.replace(/^page:/, '').toLowerCase() === linkText.toLowerCase()
+          )
+          if (pageMatch) {
+            tldr.setCurrentPage(pageMatch.id)
+            return
+          }
+        }
+
+        // Try file navigation inside workspace
+        const workspaceFiles = useApp.getState().files
+        const fileMatch = workspaceFiles.find(
+          (f) =>
+            f.title.toLowerCase() === linkText.toLowerCase() ||
+            f.id.toLowerCase() === linkText.toLowerCase()
+        )
+        if (fileMatch) {
+          navigate(`/app/file/${fileMatch.id}`)
+          return
+        }
+        break
+      }
+    }
+  }
+
   return (
     <div
       className="h-full overflow-y-auto py-4"
       onPasteCapture={handlePaste}
       onMouseOver={handleMouseOver}
       onMouseLeave={() => setHighlightedShapeId(null)}
+      onClick={handleDocClick}
     >
       <BlockNoteView editor={editor} editable={canEdit} theme={isDarkTone(tone) ? 'dark' : 'light'} onChange={persist} slashMenu={false}>
         <SuggestionMenuController

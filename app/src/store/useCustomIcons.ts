@@ -27,6 +27,7 @@ type CustomIconsState = {
   hydrated: boolean
   hydrate: () => void
   addFiles: (files: FileList | File[]) => Promise<{ added: number; skipped: string[] }>
+  addIconDirect: (name: string, src: string, type: string, groupId?: string) => void
   removeIcon: (id: string) => void
   renameIcon: (id: string, name: string) => void
   createGroup: (name: string) => void
@@ -86,6 +87,20 @@ export const useCustomIcons = create<CustomIconsState>((set, get) => ({
     syncToFirebase(nextIcons, get().groups)
     return { added: added.length, skipped }
   },
+  addIconDirect: (name, src, type, groupId) => {
+    const newIcon: CustomIcon = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: name.trim() || 'Custom Icon',
+      src,
+      type,
+      groupId,
+      createdAt: Date.now(),
+    }
+    const nextIcons = [newIcon, ...get().icons]
+    set({ icons: nextIcons })
+    persistLocal(nextIcons, get().groups)
+    syncToFirebase(nextIcons, get().groups)
+  },
   removeIcon: (id) => {
     const nextIcons = get().icons.filter((icon) => icon.id !== id)
     set({ icons: nextIcons })
@@ -129,7 +144,7 @@ export const useCustomIcons = create<CustomIconsState>((set, get) => ({
 }))
 
 export function isCustomIconSrc(icon: string) {
-  return icon.startsWith('data:image/')
+  return icon.startsWith('data:image/') || icon.startsWith('http://') || icon.startsWith('https://')
 }
 
 function readLocal(): { icons: CustomIcon[]; groups: IconGroup[] } {
@@ -140,7 +155,7 @@ function readLocal(): { icons: CustomIcon[]; groups: IconGroup[] } {
     const icons = Array.isArray(parsed?.icons) ? parsed.icons : (Array.isArray(parsed) ? parsed : [])
     const groups = Array.isArray(parsed?.groups) ? parsed.groups : []
     return {
-      icons: icons.filter((i: any) => i?.src?.startsWith('data:image/')),
+      icons: icons.filter((i: any) => i?.src?.startsWith('data:image/') || i?.src?.startsWith('http://') || i?.src?.startsWith('https://')),
       groups
     }
   } catch {

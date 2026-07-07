@@ -21,6 +21,7 @@ const ARROW: Record<FlowConnector, { start: 'none' | 'arrow'; end: 'none' | 'arr
   '>': { start: 'none', end: 'arrow', dash: 'solid' },
   '<': { start: 'arrow', end: 'none', dash: 'solid' },
   '<>': { start: 'arrow', end: 'arrow', dash: 'solid' },
+  '<->': { start: 'arrow', end: 'arrow', dash: 'solid' },
   '-': { start: 'none', end: 'none', dash: 'solid' },
   '--': { start: 'none', end: 'none', dash: 'dotted' },
   '-->': { start: 'none', end: 'arrow', dash: 'dotted' },

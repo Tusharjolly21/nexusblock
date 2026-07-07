@@ -75,7 +75,7 @@ export class SlideFrameShapeUtil extends BaseBoxShapeUtil<SlideFrameShape> {
       left: 0,
       padding: '2px 8px',
       borderRadius: '6px 6px 0 0',
-      border: '1px solid var(--color-grey-3)',
+      border: 'var(--shape-outline-thickness, 1.8px) solid var(--color-grey-3)',
       borderBottom: 'none',
       background: 'var(--color-surface)',
       color: 'var(--color-ink)',
@@ -96,7 +96,7 @@ export class SlideFrameShapeUtil extends BaseBoxShapeUtil<SlideFrameShape> {
           style={{
             position: 'absolute',
             inset: 0,
-            border: '2px dashed var(--color-grey-3)',
+            border: 'var(--shape-outline-thickness, 1.8px) dashed var(--color-grey-3)',
             borderRadius: 8,
             boxSizing: 'border-box',
           }}

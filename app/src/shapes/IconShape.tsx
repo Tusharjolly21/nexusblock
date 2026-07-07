@@ -95,7 +95,7 @@ export class IconShapeUtil extends BaseBoxShapeUtil<IconShape> {
   }
 
   component(shape: IconShape) {
-    const { w, h, icon, label, color, fontFamily } = shape.props
+    const { w, h, icon, label, color } = shape.props
     const size = Math.min(w, h)
     return (
       <HTMLContainer
@@ -125,25 +125,6 @@ export class IconShapeUtil extends BaseBoxShapeUtil<IconShape> {
           />
         ) : (
           <Icon icon={icon} width={size} height={size} />
-        )}
-        {label && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginTop: 4,
-              fontFamily: fontFamily || "var(--font-sans)",
-              fontSize: 11,
-              fontWeight: 600,
-              color: 'var(--color-ink)',
-              whiteSpace: 'nowrap',
-              pointerEvents: 'none',
-            }}
-          >
-            {label}
-          </div>
         )}
       </HTMLContainer>
     )

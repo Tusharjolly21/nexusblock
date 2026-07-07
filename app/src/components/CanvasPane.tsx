@@ -42,6 +42,7 @@ import { VersionDiffOverlay } from './VersionDiffOverlay'
 import { TraceFlowOverlay } from './TraceFlowOverlay'
 import { applyFlow } from '../dsl/flow/compile'
 
+
 /** Custom shape utils registered on top of tldraw's defaults. */
 const customShapeUtils = [
   ArchNodeShapeUtil,
@@ -141,6 +142,7 @@ export function CanvasPane() {
   const [showLiveToast, setShowLiveToast] = useState(false)
 
   const [selectedShapeBounds, setSelectedShapeBounds] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!editor) return
@@ -163,12 +165,14 @@ export function CanvasPane() {
                 w: bottomRight.x - topLeft.x,
                 h: bottomRight.y - topLeft.y,
               })
+              setSelectedTemplateId(meta.templateId)
               return
             }
           }
         }
       }
       setSelectedShapeBounds(null)
+      setSelectedTemplateId(null)
     }
 
     // Run initially and listen to store/selection events
@@ -482,11 +486,15 @@ export function CanvasPane() {
             transform: 'translateX(-50%)',
           }}
         >
-          <span className="text-[10px] font-semibold text-grey-4 flex items-center gap-1">
-            <Icon icon="logos:aws" width={12} />
-            VOD Template
-          </span>
-          <div className="h-3 w-px bg-line" />
+          {(selectedTemplateId === 'aws-vod' || selectedTemplateId === 'aws-vod-pipeline') && (
+            <>
+              <span className="text-[10px] font-semibold text-grey-4 flex items-center gap-1">
+                <Icon icon="logos:aws" width={12} />
+                VOD Template
+              </span>
+              <div className="h-3 w-px bg-line" />
+            </>
+          )}
           <button
             onClick={() => {
               useEditorUi.getState().setDslOpen(true)
@@ -551,32 +559,84 @@ export function CanvasPane() {
       <TraceFlowOverlay />
       <div className="absolute right-5 top-5 z-40 flex items-center gap-2">
         {traceFlowActive && (
-          <div className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-surface/95 p-1 shadow-[0_12px_30px_-10px_rgba(0,0,0,.3)] backdrop-blur">
-            {(['particle', 'dashes', 'laser', 'droplet'] as const).map((style) => {
-              const isActive = flowAnimationStyle === style
-              const styleIcons = {
-                particle: 'lucide:sparkles',
-                dashes: 'lucide:git-commit',
-                laser: 'lucide:zap',
-                droplet: 'lucide:droplet',
-              }
-              const styleTitles = {
-                particle: 'Glowing Particles',
-                dashes: 'Neon Dashes',
-                laser: 'Spectrum Laser',
-                droplet: 'Droplet Chain',
-              }
-              return (
-                <button
-                  key={style}
-                  onClick={() => setFlowAnimationStyle(style)}
-                  title={styleTitles[style]}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${isActive ? 'bg-ink text-paper' : 'text-grey-3 hover:text-ink hover:bg-grey-1'}`}
-                >
-                  <Icon icon={styleIcons[style]} width={15} />
-                </button>
-              )
-            })}
+          <div className="pointer-events-auto absolute right-12 top-0 z-40 flex w-[320px] flex-col rounded-2xl border border-line bg-surface/95 p-3.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,.35)] backdrop-blur-lg">
+            <div className="mb-2.5 flex items-center justify-between border-b border-line pb-1.5">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-grey-3">Connection Tracing Modes</span>
+              <div className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-mono text-[9px] text-emerald-500 uppercase font-semibold">Active</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3.5">
+              {/* Flowing Elements Group */}
+              <div>
+                <div className="mb-1.5 text-[8.5px] font-bold uppercase tracking-wider text-grey-3">Flowing Elements</div>
+                <div className="flex flex-col gap-1">
+                  {(['particle', 'droplet', 'aurora', 'pill'] as const).map((style) => {
+                    const isActive = flowAnimationStyle === style
+                    const styleIcons = {
+                      particle: 'lucide:sparkles',
+                      droplet: 'lucide:droplet',
+                      aurora: 'lucide:wind',
+                      pill: 'lucide:package',
+                    }
+                    const styleTitles = {
+                      particle: 'Particles',
+                      droplet: 'Droplets',
+                      aurora: 'Aurora Trails',
+                      pill: 'Protocol Pills',
+                    }
+                    return (
+                      <button
+                        key={style}
+                        onClick={() => setFlowAnimationStyle(style)}
+                        className={`flex h-8 items-center gap-2 rounded-lg border px-2 text-[11px] font-medium transition-all ${
+                          isActive
+                            ? 'border-ink bg-ink text-paper'
+                            : 'border-line text-grey-4 hover:border-ink hover:text-ink hover:bg-grey-1'
+                        }`}
+                      >
+                        <Icon icon={styleIcons[style]} width={14} />
+                        <span>{styleTitles[style]}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Path Strokes Group */}
+              <div>
+                <div className="mb-1.5 text-[8.5px] font-bold uppercase tracking-wider text-grey-3">Stroke Animations</div>
+                <div className="flex flex-col gap-1">
+                  {(['dashes', 'laser'] as const).map((style) => {
+                    const isActive = flowAnimationStyle === style
+                    const styleIcons = {
+                      dashes: 'lucide:git-commit',
+                      laser: 'lucide:zap',
+                    }
+                    const styleTitles = {
+                      dashes: 'Neon Dashes',
+                      laser: 'Spectrum Laser',
+                    }
+                    return (
+                      <button
+                        key={style}
+                        onClick={() => setFlowAnimationStyle(style)}
+                        className={`flex h-8 items-center gap-2 rounded-lg border px-2 text-[11px] font-medium transition-all ${
+                          isActive
+                            ? 'border-ink bg-ink text-paper'
+                            : 'border-line text-grey-4 hover:border-ink hover:text-ink hover:bg-grey-1'
+                        }`}
+                      >
+                        <Icon icon={styleIcons[style]} width={14} />
+                        <span>{styleTitles[style]}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
         )}
         <button

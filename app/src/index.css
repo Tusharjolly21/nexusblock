@@ -158,3 +158,17 @@ body {
   right: 16px !important;
   bottom: 16px !important;
 }
+
+/* Custom arrow & line stroke width overrides */
+.tl-shape[data-shape-type="arrow"] path,
+.tl-shape[data-shape-type="line"] path {
+  stroke-width: var(--arrow-stroke-thickness, 2.2px) !important;
+}
+
+/* Arrow label backdrop masking */
+.tl-arrow-label__inner {
+  background-color: var(--color-surface) !important;
+  border-radius: 4px !important;
+  padding: 1px 6px !important;
+  box-shadow: 0 0 0 2.5px var(--color-surface) !important; /* mask line behind label */
+}

@@ -7,6 +7,7 @@ import { useAuth } from '../store/useAuth'
 import { useApp, selectCurrentFile } from '../store/useApp'
 import { cloudEnabled, defaultShare, pullShare, pushShare, queueShareInvite, type ShareRole, type ShareSettings } from '../sync/cloud'
 import { isCollabConfigured } from '../lib/collab'
+import { useDocStore } from '../store/useDocStore'
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 const roleLabel: Record<ShareRole, string> = { edit: 'Can edit', view: 'Can view' }
@@ -29,6 +30,91 @@ export function ShareModal({ fileId, title, onClose }: { fileId: string; title: 
   const [embedHeight, setEmbedHeight] = useState('500')
   const [embedTone, setEmbedTone] = useState<'light' | 'obsidian'>('light')
   const [embedCopied, setEmbedCopied] = useState(false)
+
+  // GitHub Sync States
+  const [gitRepo, setGitRepo] = useState(() => localStorage.getItem(`nb-git-repo-${fileId}`) || '')
+  const [gitToken, setGitToken] = useState(() => localStorage.getItem('nb-git-token') || '')
+  const [gitBranch, setGitBranch] = useState(() => localStorage.getItem(`nb-git-branch-${fileId}`) || 'main')
+  const [gitPath, setGitPath] = useState(() => localStorage.getItem(`nb-git-path-${fileId}`) || 'README.md')
+  const [gitMessage, setGitMessage] = useState('docs: sync diagram and notes')
+  const [gitStatus, setGitStatus] = useState<string | null>(null)
+  const [gitBusy, setGitBusy] = useState(false)
+
+  const handleGitHubCommit = async () => {
+    if (!gitRepo || !gitToken || !gitPath) {
+      setGitStatus('Please fill in repository, token, and path.')
+      return
+    }
+    
+    // Save settings locally for convenience
+    localStorage.setItem(`nb-git-repo-${fileId}`, gitRepo)
+    localStorage.setItem('nb-git-token', gitToken)
+    localStorage.setItem(`nb-git-branch-${fileId}`, gitBranch)
+    localStorage.setItem(`nb-git-path-${fileId}`, gitPath)
+
+    setGitBusy(true)
+    setGitStatus('Generating files...')
+    try {
+      const filesToCommit = []
+
+      // 1. Get technical notes content (Markdown)
+      const docExporter = useDocStore.getState().docExporter
+      const markdownContent = docExporter ? await docExporter.toMarkdown() : ''
+      filesToCommit.push({
+        path: gitPath,
+        content: markdownContent || `# ${title}\n`
+      })
+
+      // 2. Get canvas diagram content (SVG)
+      const editor = useDocStore.getState().editor
+      if (editor) {
+        const ids = Array.from(editor.getCurrentPageShapeIds())
+        if (ids.length > 0) {
+          const res = await editor.toImage(ids, {
+            format: 'svg',
+            background: true,
+            padding: 24,
+          })
+          if (res?.blob) {
+            const svg = await res.blob.text()
+            // Form a path like path_diagram.svg
+            const extIndex = gitPath.lastIndexOf('.')
+            const basePath = extIndex !== -1 ? gitPath.substring(0, extIndex) : gitPath
+            filesToCommit.push({
+              path: `${basePath}_diagram.svg`,
+              content: svg
+            })
+          }
+        }
+      }
+
+      setGitStatus('Pushing to GitHub...')
+      const hostUrl = import.meta.env.VITE_AI_SERVER_URL || 'http://localhost:8787'
+      const response = await fetch(`${hostUrl}/api/v1/github/commit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl: gitRepo,
+          token: gitToken,
+          branch: gitBranch,
+          commitMessage: gitMessage,
+          files: filesToCommit
+        })
+      })
+
+      if (!response.ok) {
+        const errJson = await response.json()
+        throw new Error(errJson.error || 'Server error')
+      }
+
+      const resData = await response.json()
+      setGitStatus(`Successfully committed ${resData.files.length} file(s)!`)
+    } catch (err: any) {
+      setGitStatus(`Error: ${err.message}`)
+    } finally {
+      setGitBusy(false)
+    }
+  }
 
   const url = `${window.location.origin}/app/file/${fileId}`
   const liveUrl = `${url}?live=1`
@@ -349,6 +435,86 @@ export function ShareModal({ fileId, title, onClose }: { fileId: string; title: 
                 className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-paper hover:opacity-90"
               >
                 {embedCopied ? 'Copied!' : 'Copy Code'}
+              </button>
+            </div>
+          </section>
+
+          <section className="mt-5 rounded-2xl border border-line bg-surface p-5">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-grey-1 text-ink">
+                <Icon icon="simple-icons:github" width={15} />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-ink">GitHub Integration</div>
+                <p className="text-xs text-grey-3">Commit your technical documents and diagrams directly to a repository.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Repo URL</label>
+                <input
+                  type="text"
+                  placeholder="https://github.com/username/repo"
+                  value={gitRepo}
+                  onChange={(e) => setGitRepo(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Personal Access Token</label>
+                <input
+                  type="password"
+                  placeholder="ghp_..."
+                  value={gitToken}
+                  onChange={(e) => setGitToken(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Branch</label>
+                <input
+                  type="text"
+                  value={gitBranch}
+                  onChange={(e) => setGitBranch(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Markdown File Path</label>
+                <input
+                  type="text"
+                  placeholder="docs/architecture.md"
+                  value={gitPath}
+                  onChange={(e) => setGitPath(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-grey-3">Commit Message</label>
+              <input
+                type="text"
+                value={gitMessage}
+                onChange={(e) => setGitMessage(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+              />
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <span className="text-xs font-semibold text-grey-3 truncate">
+                {gitStatus}
+              </span>
+              <button
+                disabled={gitBusy || !gitRepo || !gitToken || !gitPath}
+                onClick={handleGitHubCommit}
+                className="shrink-0 rounded-lg bg-ink px-4 py-2 text-xs font-bold text-paper hover:opacity-90 disabled:opacity-35"
+              >
+                {gitBusy ? 'Syncing...' : 'Commit Files'}
               </button>
             </div>
           </section>

@@ -51,7 +51,7 @@ export type FlowNodeShape = TLBaseShape<'flow-node', FlowNodeProps>
 function ShapeOutline({ shape, w, h, stroke, fill }: { shape: FlowShape; w: number; h: number; stroke: string; fill: string }) {
   const sw = 1.75
   const p = sw
-  const common = { fill, stroke, strokeWidth: sw, strokeLinejoin: 'round' as const }
+  const common = { fill, stroke, style: { strokeWidth: 'var(--shape-outline-thickness, 1.8px)' }, strokeLinejoin: 'round' as const }
   const poly = (pts: [number, number][]) => <polygon points={pts.map(([x, y]) => `${x},${y}`).join(' ')} {...common} />
 
   let el: React.ReactNode
@@ -175,7 +175,7 @@ export class FlowNodeShapeUtil extends BaseBoxShapeUtil<FlowNodeShape> {
               width: 30,
               height: 30,
               borderRadius: 8,
-              border: '1px solid var(--color-line)',
+              border: 'var(--shape-outline-thickness, 1.8px) solid var(--color-line)',
               background: 'var(--color-paper)',
               display: 'grid',
               placeItems: 'center',

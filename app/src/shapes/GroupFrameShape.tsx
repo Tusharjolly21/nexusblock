@@ -132,7 +132,7 @@ export class GroupFrameShapeUtil extends BaseBoxShapeUtil<GroupFrameShape> {
       left: 14,
       padding: `${3 * scale}px ${9 * scale}px`,
       borderRadius: 7,
-      border: `1px solid ${a.border}`,
+      border: `var(--shape-outline-thickness, 1.8px) solid ${a.border}`,
       background: 'var(--color-paper)',
       color: a.title,
       fontFamily: fontFamily || "var(--font-sans)",
@@ -187,7 +187,7 @@ export class GroupFrameShapeUtil extends BaseBoxShapeUtil<GroupFrameShape> {
           style={{
             position: 'absolute',
             inset: 0,
-            border: `1.5px solid ${a.border}`,
+            border: `var(--shape-outline-thickness, 1.8px) solid ${a.border}`,
             background: a.fill,
             borderRadius: 18,
             boxSizing: 'border-box',

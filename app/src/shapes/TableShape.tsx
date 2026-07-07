@@ -307,7 +307,7 @@ function TableCanvasEditor({ shape, editor }: { shape: TableShape; editor: Edito
           width: '100%',
           height: '100%',
           overflow: 'hidden',
-          border: `1px solid ${border}`,
+          border: `var(--shape-outline-thickness, 1.8px) solid ${border}`,
           borderRadius: 10,
           background: bg,
           boxShadow: dark ? '0 18px 42px rgba(0,0,0,.35)' : '0 18px 42px rgba(15,23,42,.1)',
@@ -324,8 +324,8 @@ function TableCanvasEditor({ shape, editor }: { shape: TableShape; editor: Edito
                       key={`${rowIndex}-${colIndex}`}
                       style={{
                         padding: 0,
-                        borderRight: colIndex === row.length - 1 ? 'none' : `1px solid ${border}`,
-                        borderBottom: rowIndex === rows.length - 1 ? 'none' : `1px solid ${border}`,
+                        borderRight: colIndex === row.length - 1 ? 'none' : `var(--shape-outline-thickness, 1.8px) solid ${border}`,
+                        borderBottom: rowIndex === rows.length - 1 ? 'none' : `var(--shape-outline-thickness, 1.8px) solid ${border}`,
                         background: rowIndex === 0 ? headerBg : bg,
                         position: 'relative',
                       }}

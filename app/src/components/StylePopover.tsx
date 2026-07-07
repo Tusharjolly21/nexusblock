@@ -98,8 +98,14 @@ const HEADS = [
 export function StylePopover({ onClose }: { onClose: () => void }) {
   const editor = useDocStore((s) => s.editor)
 
+  const shapeOutlineThickness = useEditorUi((s) => s.shapeOutlineThickness)
+  const setShapeOutlineThickness = useEditorUi((s) => s.setShapeOutlineThickness)
+  const arrowStrokeThickness = useEditorUi((s) => s.arrowStrokeThickness)
+  const setArrowStrokeThickness = useEditorUi((s) => s.setArrowStrokeThickness)
+
   const [cur, setCur] = useState<{ color?: string; size?: string; fill?: string; dash?: string; hStart?: string; hEnd?: string }>({})
   const [showArrow, setShowArrow] = useState(false)
+  const [selectedArrows, setSelectedArrows] = useState<any[]>([])
   const [lineType, setLineType] = useState<string | undefined>()
   // Which control groups are relevant to the current selection.
   const [ctx, setCtx] = useState<{ style: boolean; icon: boolean; device: boolean; figure: boolean; iconSize?: number; iconColor?: string; deviceKind?: string; figureTint?: string; figureScale?: number }>({ style: true, icon: false, device: false, figure: false })
@@ -119,6 +125,7 @@ export function StylePopover({ onClose }: { onClose: () => void }) {
       const sel = editor.getSelectedShapes()
       const arrows = sel.filter((s) => s.type === 'arrow')
       setShowArrow(editor.getCurrentToolId() === 'arrow' || arrows.length > 0)
+      setSelectedArrows(arrows)
 
       // Context: does this selection support tldraw styles, or is it icons / devices / figures?
       const icons = sel.filter((s) => s.type === 'icon')
@@ -327,12 +334,18 @@ export function StylePopover({ onClose }: { onClose: () => void }) {
               })}
             </div>
           </Section>
-          <Section label="Label size">
-            <Segmented
-              options={[{ v: '1', node: 'S' }, { v: '1.35', node: 'M' }, { v: '1.8', node: 'L' }]}
-              active={String(ctx.figureScale ?? 1)}
-              onPick={(v) => applyFigureScale(Number(v))}
-            />
+          <Section label={`Label scale (${(ctx.figureScale ?? 1).toFixed(2)}x)`}>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0.8"
+                max="4.0"
+                step="0.1"
+                value={ctx.figureScale ?? 1}
+                onChange={(e) => applyFigureScale(parseFloat(e.target.value))}
+                className="h-1 flex-1 bg-grey-1 rounded-lg appearance-none cursor-pointer accent-ink"
+              />
+            </div>
           </Section>
         </>
       )}
@@ -388,8 +401,197 @@ export function StylePopover({ onClose }: { onClose: () => void }) {
               <Segmented options={HEADS.map((h) => ({ v: h.v, node: <Icon icon={h.icon} width={14} /> }))} active={cur.hEnd} onPick={(v) => apply(ArrowShapeArrowheadEndStyle, v)} />
             </div>
           </Section>
+
+          {selectedArrows.length > 0 && (() => {
+            const firstArrow = selectedArrows[0]
+            const arrowSpeed = (firstArrow?.meta as any)?.flowSpeed ?? 2.2
+            const arrowColor = (firstArrow?.meta as any)?.flowColor ?? '#3b82f6'
+            const arrowStyle = (firstArrow?.meta as any)?.flowStyle ?? 'default'
+            const arrowLabel = (firstArrow?.meta as any)?.flowLabel ?? ''
+
+            const updateArrowsMeta = (patch: any) => {
+              if (!editor || selectedArrows.length === 0) return
+              editor.updateShapes(
+                selectedArrows.map((arrow) => ({
+                  id: arrow.id,
+                  type: arrow.type,
+                  meta: {
+                    ...arrow.meta,
+                    ...patch,
+                  },
+                }))
+              )
+            }
+
+            const DEFAULT_STYLE = { v: 'default', label: 'Default', icon: 'lucide:settings-2' }
+
+            const FLOW_STYLES = [
+              { v: 'particle', label: 'Particle', icon: 'lucide:sparkles' },
+              { v: 'droplet', label: 'Droplet', icon: 'lucide:droplet' },
+              { v: 'aurora', label: 'Aurora', icon: 'lucide:wind' },
+              { v: 'pill', label: 'Pill', icon: 'lucide:package' },
+            ]
+
+            const STROKE_STYLES = [
+              { v: 'dashes', label: 'Dashes', icon: 'lucide:git-commit' },
+              { v: 'laser', label: 'Laser', icon: 'lucide:zap' },
+            ]
+
+            const PRESET_COLORS = [
+              '#3b82f6', '#06b6d4', '#10b981', '#a855f7', '#ec4899',
+              '#ef4444', '#f97316', '#eab308', '#84cc16', '#14b8a6',
+              '#6366f1', '#d946ef', '#f43f5e', '#64748b', '#ffffff', '#000000'
+            ]
+
+            return (
+              <>
+                <div className="my-3 h-px bg-line" />
+                <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-grey-3">Connection Flow Settings</div>
+
+                {/* Custom Flow style */}
+                <Section label="Flow Style Override">
+                  <div className="flex flex-col gap-2">
+                    {/* Default */}
+                    <div>
+                      <button
+                        onClick={() => updateArrowsMeta({ flowStyle: DEFAULT_STYLE.v })}
+                        className={`flex h-8 w-full items-center gap-2 px-3 rounded-lg border text-xs font-semibold transition-colors ${
+                          arrowStyle === DEFAULT_STYLE.v ? 'border-ink bg-ink text-paper' : 'border-line text-grey-4 hover:border-ink hover:text-ink'
+                        }`}
+                      >
+                        <Icon icon={DEFAULT_STYLE.icon} width={14} />
+                        <span>System Default (Inherit Toolbar)</span>
+                      </button>
+                    </div>
+
+                    {/* Flowing Elements Group */}
+                    <div>
+                      <div className="mb-1 text-[8.5px] uppercase tracking-wider text-grey-3 font-semibold">Flowing Elements</div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {FLOW_STYLES.map((st) => (
+                          <button
+                            key={st.v}
+                            onClick={() => updateArrowsMeta({ flowStyle: st.v })}
+                            title={st.label}
+                            className={`flex h-8 flex-col items-center justify-center rounded-lg border text-[8.5px] font-medium transition-colors ${
+                              arrowStyle === st.v ? 'border-ink bg-ink text-paper' : 'border-line text-grey-4 hover:border-ink hover:text-ink'
+                            }`}
+                          >
+                            <Icon icon={st.icon} width={13} />
+                            <span className="truncate max-w-full px-0.5">{st.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Stroke Animations Group */}
+                    <div>
+                      <div className="mb-1 text-[8.5px] uppercase tracking-wider text-grey-3 font-semibold">Stroke Animations</div>
+                      <div className="grid grid-cols-2 gap-1">
+                        {STROKE_STYLES.map((st) => (
+                          <button
+                            key={st.v}
+                            onClick={() => updateArrowsMeta({ flowStyle: st.v })}
+                            title={st.label}
+                            className={`flex h-8 flex-col items-center justify-center rounded-lg border text-[8.5px] font-medium transition-colors ${
+                              arrowStyle === st.v ? 'border-ink bg-ink text-paper' : 'border-line text-grey-4 hover:border-ink hover:text-ink'
+                            }`}
+                          >
+                            <Icon icon={st.icon} width={13} />
+                            <span className="truncate max-w-full px-0.5">{st.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+
+                {/* Flow Speed */}
+                <Section label={`Flow Speed (${arrowSpeed}s loop)`}>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="1.0"
+                      max="6.0"
+                      step="0.2"
+                      value={arrowSpeed}
+                      onChange={(e) => updateArrowsMeta({ flowSpeed: parseFloat(e.target.value) })}
+                      className="h-1 flex-1 bg-grey-1 rounded-lg appearance-none cursor-pointer accent-ink"
+                    />
+                  </div>
+                </Section>
+
+                {/* Flow Color */}
+                <Section label="Flow Color">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {PRESET_COLORS.map((col) => (
+                      <button
+                        key={col}
+                        onClick={() => updateArrowsMeta({ flowColor: col })}
+                        className={`h-5 w-5 rounded-full border transition-transform hover:scale-110 ${
+                          arrowColor === col ? 'scale-110 ring-2 ring-ink ring-offset-2' : 'border-line'
+                        }`}
+                        style={{ backgroundColor: col }}
+                      />
+                    ))}
+                    <input
+                      type="text"
+                      placeholder="#hex"
+                      value={arrowColor}
+                      onChange={(e) => updateArrowsMeta({ flowColor: e.target.value })}
+                      className="h-6 w-16 rounded-md border border-line bg-surface px-1.5 font-mono text-[9px] text-ink focus:border-ink focus:outline-none"
+                    />
+                  </div>
+                </Section>
+
+                {/* Custom label for pill */}
+                {arrowStyle === 'pill' && (
+                  <Section label="Packet Label Text">
+                    <input
+                      type="text"
+                      maxLength={7}
+                      placeholder="e.g. HTTPS"
+                      value={arrowLabel}
+                      onChange={(e) => updateArrowsMeta({ flowLabel: e.target.value })}
+                      className="w-full h-8 rounded-lg border border-line bg-surface px-2.5 text-xs text-ink focus:border-ink focus:outline-none"
+                    />
+                  </Section>
+                )}
+              </>
+            )
+          })()}
         </>
       )}
+      {/* General Stroke & Outline Thickness Sliders */}
+      <div className="my-3 h-px bg-line" />
+      
+      <Section label={`Shape Outline (${shapeOutlineThickness.toFixed(1)}px)`}>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min="1.0"
+            max="6.0"
+            step="0.2"
+            value={shapeOutlineThickness}
+            onChange={(e) => setShapeOutlineThickness(parseFloat(e.target.value))}
+            className="h-1 flex-1 bg-grey-1 rounded-lg appearance-none cursor-pointer accent-ink"
+          />
+        </div>
+      </Section>
+
+      <Section label={`Line Stroke (${arrowStrokeThickness.toFixed(1)}px)`}>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min="1.0"
+            max="6.0"
+            step="0.2"
+            value={arrowStrokeThickness}
+            onChange={(e) => setArrowStrokeThickness(parseFloat(e.target.value))}
+            className="h-1 flex-1 bg-grey-1 rounded-lg appearance-none cursor-pointer accent-ink"
+          />
+        </div>
+      </Section>
     </div>
   )
 }

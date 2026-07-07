@@ -15,7 +15,7 @@ export type FlowDoc = {
   errors: FlowError[]
 }
 
-const CONNECTORS: FlowConnector[] = ['-->', '<>', '--', '>', '<', '-'] // longest-first for scanning
+const CONNECTORS: FlowConnector[] = ['-->', '<->', '<>', '--', '>', '<', '-'] // longest-first for scanning
 
 /** Remove `//` and `#` line comments, ignoring occurrences inside quotes. */
 function stripComment(line: string): string {

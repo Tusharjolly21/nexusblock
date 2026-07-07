@@ -6,7 +6,7 @@ export const FLOW_SHAPES = [
 ] as const
 export type FlowShape = (typeof FLOW_SHAPES)[number]
 
-export const FLOW_CONNECTORS = ['>', '<', '<>', '-', '--', '-->'] as const
+export const FLOW_CONNECTORS = ['>', '<', '<>', '<->', '-', '--', '-->'] as const
 export type FlowConnector = (typeof FLOW_CONNECTORS)[number]
 
 /** Named colors → stroke hex. Fill is derived as a pastel tint of the stroke. */

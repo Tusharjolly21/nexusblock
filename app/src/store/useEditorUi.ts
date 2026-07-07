@@ -67,8 +67,13 @@ type EditorUiState = {
   traceFlowActive: boolean;
   setTraceFlowActive: (active: boolean) => void;
 
-  flowAnimationStyle: 'particle' | 'dashes' | 'laser' | 'droplet';
-  setFlowAnimationStyle: (style: 'particle' | 'dashes' | 'laser' | 'droplet') => void;
+  flowAnimationStyle: 'particle' | 'dashes' | 'laser' | 'droplet' | 'aurora' | 'pill';
+  setFlowAnimationStyle: (style: 'particle' | 'dashes' | 'laser' | 'droplet' | 'aurora' | 'pill') => void;
+
+  shapeOutlineThickness: number;
+  arrowStrokeThickness: number;
+  setShapeOutlineThickness: (thickness: number) => void;
+  setArrowStrokeThickness: (thickness: number) => void;
 };
 
 export const useEditorUi = create<EditorUiState>((set) => ({
@@ -145,4 +150,25 @@ export const useEditorUi = create<EditorUiState>((set) => ({
 
   flowAnimationStyle: 'particle',
   setFlowAnimationStyle: (flowAnimationStyle) => set({ flowAnimationStyle }),
+
+  shapeOutlineThickness: 1.8,
+  arrowStrokeThickness: 2.2,
+  setShapeOutlineThickness: (shapeOutlineThickness) => {
+    set({ shapeOutlineThickness })
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--shape-outline-thickness', `${shapeOutlineThickness}px`)
+    }
+  },
+  setArrowStrokeThickness: (arrowStrokeThickness) => {
+    set({ arrowStrokeThickness })
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--arrow-stroke-thickness', `${arrowStrokeThickness}px`)
+    }
+  },
 }));
+
+// Apply initial defaults
+if (typeof document !== 'undefined') {
+  document.documentElement.style.setProperty('--shape-outline-thickness', '1.8px')
+  document.documentElement.style.setProperty('--arrow-stroke-thickness', '2.2px')
+}
